@@ -12,3 +12,4 @@ C:\Users\User\source\repos\Mini_Pos\POS.data\obj\Debug\net8.0\refint\POS.data.dl
 C:\Users\User\source\repos\Mini_Pos\POS.data\obj\Debug\net8.0\POS.data.pdb
 C:\Users\User\source\repos\Mini_Pos\POS.data\obj\Debug\net8.0\POS.data.genruntimeconfig.cache
 C:\Users\User\source\repos\Mini_Pos\POS.data\obj\Debug\net8.0\ref\POS.data.dll
+C:\Users\User\source\repos\Mini_Pos\POS.data\obj\Debug\net8.0\POS.data.sourcelink.json

@@ -81,3 +81,4 @@ C:\Users\User\source\repos\Mini_Pos\POS.Api\obj\Debug\net8.0\POS.Api.genruntimec
 C:\Users\User\source\repos\Mini_Pos\POS.Api\obj\Debug\net8.0\ref\POS.Api.dll
 C:\Users\User\source\repos\Mini_Pos\POS.Api\bin\Debug\net8.0\POS.Core.dll
 C:\Users\User\source\repos\Mini_Pos\POS.Api\bin\Debug\net8.0\POS.Core.pdb
+C:\Users\User\source\repos\Mini_Pos\POS.Api\obj\Debug\net8.0\POS.Api.sourcelink.json
