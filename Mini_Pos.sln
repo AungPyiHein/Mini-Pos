@@ -1,13 +1,11 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37027.9
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POS.data", "POS.data\POS.data.csproj", "{EC1C16C3-516F-462A-BCE6-FB330E47AC3A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POS.Api", "POS.Api\POS.Api.csproj", "{96FE7DEB-705E-481F-9111-707AEEE6E68E}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POS.Core", "POS.Core\POS.Core.csproj", "{724B425D-9151-4469-AB70-66E579955DE1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POS.Backend", "POS.Backend\POS.Backend.csproj", "{724B425D-9151-4469-AB70-66E579955DE1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,10 +17,6 @@ Global
 		{EC1C16C3-516F-462A-BCE6-FB330E47AC3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EC1C16C3-516F-462A-BCE6-FB330E47AC3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EC1C16C3-516F-462A-BCE6-FB330E47AC3A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{96FE7DEB-705E-481F-9111-707AEEE6E68E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{96FE7DEB-705E-481F-9111-707AEEE6E68E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{96FE7DEB-705E-481F-9111-707AEEE6E68E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{96FE7DEB-705E-481F-9111-707AEEE6E68E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{724B425D-9151-4469-AB70-66E579955DE1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{724B425D-9151-4469-AB70-66E579955DE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{724B425D-9151-4469-AB70-66E579955DE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
