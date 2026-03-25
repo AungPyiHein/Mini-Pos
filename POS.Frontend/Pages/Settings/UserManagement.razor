@@ -1,5 +1,9 @@
 @page "/settings/users"
 @layout MainLayout
+@using POS.Frontend.Services.Users
+@using POS.Frontend.Models.Users
+@using POS.Shared.Models
+@inject IUserService UserService
 
 <div class="space-y-5">
 
@@ -8,7 +12,7 @@
             <h2 class="page-title">User Management</h2>
             <p class="page-subtitle">Manage staff access and roles</p>
         </div>
-        <button class="btn-primary">
+        <button class="btn-primary" @onclick="ShowInviteModal">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
             Invite User
         </button>
@@ -21,48 +25,74 @@
                     <tr>
                         <th>User</th>
                         <th>Role</th>
-                        <th>Branch Access</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach (var u in Users)
+                <tbody class="relative">
+                    @if (IsLoading)
                     {
                         <tr>
-                            <td>
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
-                                        <span class="text-accent text-xs font-semibold">@u.Name[0]</span>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">@u.Name</p>
-                                        <p class="text-xs text-muted">@u.Email</p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                @if (u.Role == "Admin")
-                                { <span class="badge bg-purple-100 text-purple-700">@u.Role</span> }
-                                else if (u.Role == "Manager")
-                                { <span class="badge badge-info">@u.Role</span> }
-                                else
-                                { <span class="badge bg-gray-100 text-gray-700">@u.Role</span> }
-                            </td>
-                            <td class="text-muted">@u.Branch</td>
-                            <td>
-                                @if (u.Active)
-                                { <span class="badge badge-success">Active</span> }
-                                else
-                                { <span class="badge badge-warning">Inactive</span> }
-                            </td>
-                            <td>
-                                <div class="flex gap-1">
-                                    <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
-                                    <button class="btn-ghost py-1 px-2 text-xs text-red-500">Revoke</button>
+                            <td colspan="4" class="text-center py-10">
+                                <div class="flex justify-center">
+                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                                 </div>
                             </td>
                         </tr>
+                    }
+                    else if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-10 text-red-500">
+                                @ErrorMessage
+                                <button class="btn-secondary ml-2" @onclick="LoadUsers">Retry</button>
+                            </td>
+                        </tr>
+                    }
+                    else if (!UserList.Any())
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-10 text-muted italic">No users found</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var u in UserList)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                                            <span class="text-accent text-xs font-semibold">@u.Username[0]</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">@u.Username</p>
+                                            <p class="text-xs text-muted">@u.Email</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (u.Role == "Admin")
+                                    { <span class="badge bg-purple-100 text-purple-700">@u.Role</span> }
+                                    else if (u.Role == "MerchantAdmin")
+                                    { <span class="badge badge-info">Merchant Admin</span> }
+                                    else
+                                    { <span class="badge bg-gray-100 text-gray-700">@u.Role</span> }
+                                </td>
+                                <td>
+                                    @if (u.IsActive)
+                                    { <span class="badge badge-success">Active</span> }
+                                    else
+                                    { <span class="badge badge-warning">Inactive</span> }
+                                </td>
+                                <td>
+                                    <div class="flex gap-1">
+                                        <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowEditModal(u)">Edit</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => DeleteUser(u.Id)">Revoke</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     }
                 </tbody>
             </table>
@@ -71,15 +101,199 @@
 
 </div>
 
-@code {
-    record UserRow(string Name, string Email, string Role, string Branch, bool Active);
+@if (ShowModal)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <form @onsubmit="SaveUser">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">@(IsEditMode ? "Edit User" : "Invite New User")</h3>
+                    <button type="button" @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    @if (!IsEditMode)
+                    {
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                            <input type="text" class="form-input w-full" @bind="CreateRequest.Username" required placeholder="johndoe" />
+                        </div>
+                    }
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        @if (IsEditMode)
+                        {
+                            <input type="email" class="form-input w-full" @bind="UpdateRequest.Email" required placeholder="user@example.com" />
+                        }
+                        else
+                        {
+                            <input type="email" class="form-input w-full" @bind="CreateRequest.Email" required placeholder="user@example.com" />
+                        }
+                    </div>
+                    @if (!IsEditMode)
+                    {
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input type="password" class="form-input w-full" @bind="CreateRequest.PlainPassword" required placeholder="••••••••" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">New Password (leave blank to keep current)</label>
+                            <input type="password" class="form-input w-full" @bind="UpdateRequest.PlainPassword" placeholder="••••••••" />
+                        </div>
+                    }
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                        <select class="form-input w-full" value="@SelectedRole" @onchange="OnRoleChanged">
+                            @foreach (var role in Enum.GetValues<UserRole>())
+                            {
+                                <option value="@role">@role</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+                    <button type="button" @onclick="CloseModal" class="btn-ghost">Cancel</button>
+                    <button type="submit" class="btn-primary" disabled="@IsSaving">
+                        @if (IsSaving)
+                        {
+                            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                        }
+                        @(IsEditMode ? "Save Changes" : "Send Invitation")
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
 
-    List<UserRow> Users = new()
+@code {
+    private List<UserResponseDto> UserList = new();
+    private CreateUserRequest CreateRequest = new();
+    private UpdateUserRequest UpdateRequest = new();
+    private Guid? EditingId;
+    private bool IsLoading = true;
+    private bool IsSaving = false;
+    private bool ShowModal = false;
+    private bool IsEditMode = false;
+    private string ErrorMessage = "";
+
+    // Helper to handle role selection binding
+    private UserRole SelectedRole
     {
-        new("Admin User",   "admin@minipos.com",   "Admin",   "All Branches",   true),
-        new("Sarah Smith",  "sarah@minipos.com",   "Manager", "Downtown Express", true),
-        new("Mike Johnson", "mike@minipos.com",    "Cashier", "Downtown Express", true),
-        new("Lisa Wong",    "lisa@minipos.com",    "Cashier", "Uptown Central",   true),
-        new("Tom Davis",    "tom@minipos.com",     "Cashier", "Downtown Express", false),
-    };
+        get => IsEditMode ? (UpdateRequest.Role ?? UserRole.Staff) : CreateRequest.Role;
+        set
+        {
+            if (IsEditMode) UpdateRequest.Role = value;
+            else CreateRequest.Role = value;
+        }
+    }
+
+    private void OnRoleChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<UserRole>(e.Value?.ToString(), out var role))
+        {
+            SelectedRole = role;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        IsLoading = true;
+        ErrorMessage = "";
+        try
+        {
+            var response = await UserService.GetAllUsersAsync();
+            if (response.IsSuccess && response.Data != null)
+            {
+                UserList = response.Data.ToList();
+            }
+            else
+            {
+                ErrorMessage = response.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "Failed to load users: " + ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ShowInviteModal()
+    {
+        IsEditMode = false;
+        CreateRequest = new CreateUserRequest { Role = UserRole.Staff };
+        ShowModal = true;
+    }
+
+    private void ShowEditModal(UserResponseDto user)
+    {
+        IsEditMode = true;
+        EditingId = user.Id;
+        UpdateRequest = new UpdateUserRequest
+        {
+            Email = user.Email,
+            Role = Enum.TryParse<UserRole>(user.Role, out var role) ? role : UserRole.Staff
+        };
+        ShowModal = true;
+    }
+
+    private void CloseModal()
+    {
+        ShowModal = false;
+    }
+
+    private async Task SaveUser()
+    {
+        IsSaving = true;
+        try
+        {
+            bool isSuccess;
+            if (IsEditMode && EditingId.HasValue)
+            {
+                var response = await UserService.UpdateUserAsync(EditingId.Value, UpdateRequest);
+                isSuccess = response.IsSuccess;
+            }
+            else
+            {
+                var response = await UserService.CreateUserAsync(CreateRequest);
+                isSuccess = response.IsSuccess;
+            }
+
+            if (isSuccess)
+            {
+                ShowModal = false;
+                await LoadUsers();
+            }
+            else
+            {
+                // Handle error
+            }
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task DeleteUser(Guid id)
+    {
+        var response = await UserService.DeleteUserAsync(id);
+        if (response.IsSuccess)
+        {
+            await LoadUsers();
+        }
+    }
 }

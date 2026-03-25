@@ -9,4 +9,7 @@ public interface IBranchService
 {
     Task<ApiResponse<IEnumerable<BranchResponseDto>>> GetAllBranchesAsync();
     Task<ApiResponse<IEnumerable<BranchResponseDto>>> GetBranchesByMerchantIdAsync(Guid merchantId);
+    Task<ApiResponse<Guid>> CreateBranchAsync(CreateBranchRequest request);
+    Task<ApiResponse> UpdateBranchAsync(Guid id, UpdateBranchRequest request);
+    Task<ApiResponse> DeleteBranchAsync(Guid id);
 }

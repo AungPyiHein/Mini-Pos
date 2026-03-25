@@ -2,8 +2,11 @@
 @layout MainLayout
 @using POS.Frontend.Models.Inventory
 @using POS.Frontend.Models.Merchants
+@using POS.Frontend.Models.Products
+@using POS.Shared.Models
 @inject POS.Frontend.Services.Inventory.IInventoryService InventoryService
 @inject POS.Frontend.Services.Merchants.IBranchService BranchService
+@inject POS.Frontend.Services.Products.IProductService ProductService
 
 <div class="space-y-5">
 
@@ -12,7 +15,7 @@
             <h2 class="page-title">Inventory</h2>
             <p class="page-subtitle">Stock levels across all branches</p>
         </div>
-        <button class="btn-primary">
+        <button class="btn-primary" @onclick="() => ShowAdjustModal()">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
             Adjust Stock
         </button>
@@ -108,7 +111,7 @@
                                         { <span class="badge badge-success">OK</span> }
                                     </td>
                                     <td>
-                                        <button class="btn-ghost py-1 px-2 text-xs">Adjust</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowAdjustModal(item)">Adjust</button>
                                     </td>
                                 </tr>
                             }
@@ -127,20 +130,104 @@
 
 </div>
 
+@if (ShowModal)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Adjust Stock</h3>
+                <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                @if (AdjustmentRequest.ProductId == Guid.Empty)
+                {
+                    <div class="space-y-3">
+                        <div class="p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
+                            Select a product below to adjust its stock level.
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-muted mb-1 uppercase tracking-wider">Product</label>
+                            <select class="form-input w-full" @onchange="HandleProductSelection">
+                                <option value="">-- Choose Product --</option>
+                                @foreach (var p in AllProducts)
+                                {
+                                    <option value="@p.Id.ToString()">@p.Name (@p.SKU)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <label class="block text-xs font-medium text-muted mb-1 uppercase tracking-wider">Product</label>
+                        <div class="font-semibold text-gray-900">@SelectedProductName</div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-muted mb-1 uppercase tracking-wider">Current Stock</label>
+                        <div class="text-gray-700">@CurrentStockQuantity</div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-muted mb-1 uppercase tracking-wider">Adjustment (+ / -)</label>
+                        <input type="number" class="form-input w-full text-lg" @bind="AdjustmentRequest.QuantityChange" placeholder="e.g. 10 or -5" />
+                        <p class="mt-1 text-xs text-muted italic">Positive adds stock, negative reduces it.</p>
+                    </div>
+                }
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+                <button @onclick="CloseModal" class="btn-ghost">Cancel</button>
+                <button @onclick="HandleAdjustStock" class="btn-primary" disabled="@(IsSaving || AdjustmentRequest.ProductId == Guid.Empty)">
+                    @if (IsSaving)
+                    {
+                        <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    }
+                    Save Adjustment
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<BranchResponseDto> Branches = new();
     private BranchResponseDto? SelectedBranch;
     private List<InventoryResponseDto> InventoryItems = new();
+    private List<ProductsResponseDto> AllProducts = new();
     
     private bool IsLoadingBranches = true;
     private bool IsLoadingInventory = false;
+    private bool IsSaving = false;
+    private bool ShowModal = false;
     private string BranchErrorMessage = "";
     private string InventoryErrorMessage = "";
+    
+    private UpdateStockRequest AdjustmentRequest = new();
+    private string SelectedProductName = "";
+    private int CurrentStockQuantity = 0;
+
     private int LowStockCount => InventoryItems.Count(i => i.StockQuantity <= 5);
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadBranches();
+        await Task.WhenAll(LoadBranches(), LoadAllProducts());
+    }
+
+    private async Task LoadAllProducts()
+    {
+        try
+        {
+            var response = await ProductService.GetProductsAsync(new PaginationFilter { PageSize = 100 });
+            if (response.IsSuccess && response.Data?.Data != null)
+            {
+                AllProducts = response.Data.Data.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading products: {ex.Message}");
+        }
     }
 
     private async Task LoadBranches()
@@ -202,6 +289,81 @@
         finally
         {
             IsLoadingInventory = false;
+        }
+    }
+
+    private void ShowAdjustModal(InventoryResponseDto? item = null)
+    {
+        if (SelectedBranch == null) return;
+
+        AdjustmentRequest = new UpdateStockRequest
+        {
+            BranchId = SelectedBranch.Id,
+            ProductId = item?.ProductId ?? Guid.Empty,
+            QuantityChange = 0
+        };
+        SelectedProductName = item?.ProductName ?? "";
+        CurrentStockQuantity = item?.StockQuantity ?? 0;
+        ShowModal = true;
+    }
+
+    private void HandleProductSelection(ChangeEventArgs e)
+    {
+        var productIdStr = e.Value?.ToString();
+        if (Guid.TryParse(productIdStr, out var productId))
+        {
+            var product = AllProducts.FirstOrDefault(p => p.Id == productId);
+            if (product != null)
+            {
+                AdjustmentRequest.ProductId = product.Id;
+                SelectedProductName = product.Name;
+                
+                // Try to find current stock in the loaded list
+                var existingItem = InventoryItems.FirstOrDefault(i => i.ProductId == productId);
+                CurrentStockQuantity = existingItem?.StockQuantity ?? 0;
+            }
+        }
+        else
+        {
+            AdjustmentRequest.ProductId = Guid.Empty;
+            SelectedProductName = "";
+            CurrentStockQuantity = 0;
+        }
+    }
+
+    private void CloseModal()
+    {
+        ShowModal = false;
+    }
+
+    private async Task HandleAdjustStock()
+    {
+        if (AdjustmentRequest.QuantityChange == 0)
+        {
+            ShowModal = false;
+            return;
+        }
+
+        IsSaving = true;
+        try
+        {
+            var response = await InventoryService.AdjustStockAsync(AdjustmentRequest);
+            if (response.IsSuccess)
+            {
+                ShowModal = false;
+                if (SelectedBranch != null)
+                {
+                    await LoadInventory(SelectedBranch.Id);
+                }
+            }
+            else
+            {
+                // Optionally show error in modal
+            }
+        }
+        finally
+        {
+            IsSaving = false;
         }
     }
 }

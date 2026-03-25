@@ -43,4 +43,49 @@ public class BranchService : IBranchService
             return new ApiResponse<IEnumerable<BranchResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
+
+    public async Task<ApiResponse<Guid>> CreateBranchAsync(CreateBranchRequest request)
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync("/api/branch", request);
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse<Guid>>();
+            if (result != null) result.IsSuccess = response.IsSuccessStatusCode;
+            return result ?? new ApiResponse<Guid> { IsSuccess = false, Message = "Error creating branch" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<Guid> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse> UpdateBranchAsync(Guid id, UpdateBranchRequest request)
+    {
+        try
+        {
+            var response = await _http.PutAsJsonAsync($"/api/branch/{id}", request);
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            if (result != null) result.IsSuccess = response.IsSuccessStatusCode;
+            return result ?? new ApiResponse { IsSuccess = false, Message = "Error updating branch" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse> DeleteBranchAsync(Guid id)
+    {
+        try
+        {
+            var response = await _http.DeleteAsync($"/api/branch/{id}");
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            if (result != null) result.IsSuccess = response.IsSuccessStatusCode;
+            return result ?? new ApiResponse { IsSuccess = false, Message = "Error deleting branch" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
 }

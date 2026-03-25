@@ -2,6 +2,7 @@
 @layout MainLayout
 @using POS.Frontend.Models.Merchants
 @inject POS.Frontend.Services.Merchants.IBranchService BranchService
+@inject POS.Frontend.Services.Merchants.IMerchantService MerchantService
 
 <div class="space-y-5">
 
@@ -10,7 +11,7 @@
             <h2 class="page-title">Branches</h2>
             <p class="page-subtitle">Manage store locations</p>
         </div>
-        <button class="btn-primary">
+        <button class="btn-primary" @onclick="ShowAddModal">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
             Add Branch
         </button>
@@ -63,8 +64,8 @@
                                 <td class="text-muted">@b.ActiveUsersCount</td>
                                 <td>
                                     <div class="flex gap-1">
-                                        <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
-                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500">Archive</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowEditModal(b)">Edit</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => DeleteBranch(b.Id)">Archive</button>
                                     </div>
                                 </td>
                             </tr>
@@ -77,9 +78,62 @@
 
 </div>
 
+@if (ShowModal)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">@(IsEditMode ? "Edit Branch" : "Add New Branch")</h3>
+                <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                @if (!IsEditMode)
+                {
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Select Merchant</label>
+                        <select class="form-input w-full" @bind="CurrentBranch.MerchantId">
+                            <option value="">-- Choose Merchant --</option>
+                            @foreach (var m in MerchantList)
+                            {
+                                <option value="@m.Id">@m.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Branch Name</label>
+                    <input type="text" class="form-input w-full" @bind="CurrentBranch.Name" placeholder="Branch Name" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <input type="text" class="form-input w-full" @bind="CurrentBranch.Address" placeholder="Physical Address" />
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+                <button @onclick="CloseModal" class="btn-ghost">Cancel</button>
+                <button @onclick="SaveBranch" class="btn-primary" disabled="@IsSaving">
+                    @if (IsSaving)
+                    {
+                        <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    }
+                    @(IsEditMode ? "Save Changes" : "Create Branch")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<BranchResponseDto> BranchList = new();
+    private List<MerchantResponseDto> MerchantList = new();
+    private CreateBranchRequest CurrentBranch = new();
+    private Guid? EditingId;
     private bool IsLoading = true;
+    private bool IsSaving = false;
+    private bool ShowModal = false;
+    private bool IsEditMode = false;
     private string ErrorMessage = "";
 
     protected override async Task OnInitializedAsync()
@@ -102,6 +156,13 @@
             {
                 ErrorMessage = response.Message;
             }
+
+            // Also load merchants for the add modal
+            var merchantsResponse = await MerchantService.GetAllMerchantsAsync();
+            if (merchantsResponse.IsSuccess && merchantsResponse.Data != null)
+            {
+                MerchantList = merchantsResponse.Data.ToList();
+            }
         }
         catch (Exception ex)
         {
@@ -110,6 +171,78 @@
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private void ShowAddModal()
+    {
+        IsEditMode = false;
+        CurrentBranch = new CreateBranchRequest();
+        ShowModal = true;
+    }
+
+    private void ShowEditModal(BranchResponseDto branch)
+    {
+        IsEditMode = true;
+        EditingId = branch.Id;
+        CurrentBranch = new CreateBranchRequest
+        {
+            Name = branch.Name,
+            Address = branch.Address ?? "",
+            MerchantId = Guid.Empty // MerchantId is not editable in this simple view
+        };
+        ShowModal = true;
+    }
+
+    private void CloseModal()
+    {
+        ShowModal = false;
+    }
+
+    private async Task SaveBranch()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentBranch.Name)) return;
+        if (!IsEditMode && CurrentBranch.MerchantId == Guid.Empty) return;
+
+        IsSaving = true;
+        try
+        {
+            bool success;
+            if (IsEditMode && EditingId.HasValue)
+            {
+                var request = new UpdateBranchRequest
+                {
+                    Id = EditingId.Value,
+                    Name = CurrentBranch.Name,
+                    Address = CurrentBranch.Address
+                };
+                var response = await BranchService.UpdateBranchAsync(EditingId.Value, request);
+                success = response.IsSuccess;
+            }
+            else
+            {
+                var response = await BranchService.CreateBranchAsync(CurrentBranch);
+                success = response.IsSuccess;
+            }
+
+            if (success)
+            {
+                ShowModal = false;
+                await LoadBranches();
+            }
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task DeleteBranch(Guid id)
+    {
+        var response = await BranchService.DeleteBranchAsync(id);
+        if (response.IsSuccess)
+        {
+            await LoadBranches();
         }
     }
 }

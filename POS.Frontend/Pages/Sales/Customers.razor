@@ -1,5 +1,11 @@
 @page "/customers"
 @layout MainLayout
+@using POS.Frontend.Services.Sales
+@using POS.Frontend.Models.Sales
+@using POS.Shared.Models
+@using POS.Frontend.Services.Merchants
+@inject ICustomerService CustomerService
+@inject IMerchantService MerchantService
 
 <div class="space-y-5">
 
@@ -8,7 +14,7 @@
             <h2 class="page-title">Customers</h2>
             <p class="page-subtitle">Manage your customer list</p>
         </div>
-        <button class="btn-primary">
+        <button class="btn-primary" @onclick="ShowAddModal">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
             Add Customer
         </button>
@@ -16,8 +22,8 @@
 
     <div class="card">
         <div class="card-header">
-            <input type="text" placeholder="Search customers…" class="form-input max-w-xs" />
-            <span class="text-xs text-muted">@CustomerList.Count total</span>
+            <input type="text" placeholder="Search customers…" class="form-input max-w-xs" @bind="SearchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+            <span class="text-xs text-muted">@TotalRecords total</span>
         </div>
         <div class="overflow-x-auto">
             <table class="data-table">
@@ -26,34 +32,58 @@
                         <th>Name</th>
                         <th>Phone</th>
                         <th>Email</th>
-                        <th>Total Orders</th>
-                        <th>Total Spent</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach (var c in CustomerList)
+                <tbody class="relative">
+                    @if (IsLoading)
                     {
                         <tr>
-                            <td>
-                                <div class="flex items-center gap-2">
-                                    <div class="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                                        <span class="text-accent text-xs font-semibold">@c.Name[0]</span>
-                                    </div>
-                                    <span class="font-medium text-gray-800">@c.Name</span>
-                                </div>
-                            </td>
-                            <td class="text-muted">@c.Phone</td>
-                            <td class="text-muted">@c.Email</td>
-                            <td>@c.Orders</td>
-                            <td class="font-semibold">$@c.Spent</td>
-                            <td>
-                                <div class="flex gap-1">
-                                    <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
-                                    <button class="btn-ghost py-1 px-2 text-xs text-red-500">Delete</button>
+                            <td colspan="4" class="text-center py-10">
+                                <div class="flex justify-center">
+                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                                 </div>
                             </td>
                         </tr>
+                    }
+                    else if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-10 text-red-500">
+                                @ErrorMessage
+                                <button class="btn-secondary ml-2" @onclick="LoadCustomers">Retry</button>
+                            </td>
+                        </tr>
+                    }
+                    else if (!CustomerList.Any())
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-10 text-muted italic">No customers found</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in CustomerList)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                                            <span class="text-accent text-xs font-semibold">@c.Name[0]</span>
+                                        </div>
+                                        <span class="font-medium text-gray-800">@c.Name</span>
+                                    </div>
+                                </td>
+                                <td class="text-muted">@c.PhoneNumber</td>
+                                <td class="text-muted">@c.Email</td>
+                                <td>
+                                    <div class="flex gap-1">
+                                        <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowEditModal(c)">Edit</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => DeleteCustomer(c.Id)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     }
                 </tbody>
             </table>
@@ -62,18 +92,179 @@
 
 </div>
 
-@code {
-    record CustomerRow(string Name, string Phone, string Email, int Orders, string Spent);
+@if (ShowModal)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">@(IsEditMode ? "Edit Customer" : "Add New Customer")</h3>
+                <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" class="form-input w-full" @bind="CurrentCustomer.Name" placeholder="Enter customer name" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <input type="text" class="form-input w-full" @bind="CurrentCustomer.PhoneNumber" placeholder="e.g. +1 555-0101" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input type="email" class="form-input w-full" @bind="CurrentCustomer.Email" placeholder="customer@example.com" />
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+                <button @onclick="CloseModal" class="btn-ghost">Cancel</button>
+                <button @onclick="SaveCustomer" class="btn-primary" disabled="@IsSaving">
+                    @if (IsSaving)
+                    {
+                        <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    }
+                    @(IsEditMode ? "Save Changes" : "Create Customer")
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
-    List<CustomerRow> CustomerList = new()
+@code {
+    private List<CustomerResponseDto> CustomerList = new();
+    private CreateCustomerRequest CurrentCustomer = new();
+    private Guid? EditingId;
+    private bool IsLoading = true;
+    private bool IsSaving = false;
+    private bool ShowModal = false;
+    private bool IsEditMode = false;
+    private string ErrorMessage = "";
+    private string SearchTerm = "";
+    private int TotalRecords = 0;
+
+    // TODO: Get this from Auth state
+    private Guid MerchantId = Guid.Empty; 
+
+    protected override async Task OnInitializedAsync()
     {
-        new("Alice Johnson",  "+1 555-0101", "alice@email.com",   18, "1,240.00"),
-        new("Bob Smith",      "+1 555-0102", "bob@email.com",      7,   "320.50"),
-        new("Carol White",    "+1 555-0103", "carol@email.com",   25, "3,180.00"),
-        new("David Lee",      "+1 555-0104", "david@email.com",    3,   "145.00"),
-        new("Eve Martinez",   "+1 555-0105", "eve@email.com",     12,   "890.75"),
-        new("Frank Wilson",   "+1 555-0106", "frank@email.com",    9,   "580.00"),
-        new("Grace Kim",      "+1 555-0107", "grace@email.com",   31, "4,920.00"),
-        new("Henry Brown",    "+1 555-0108", "henry@email.com",    2,    "45.50"),
-    };
+        // Try to get a real merchant ID if possible
+        if (MerchantId == Guid.Empty)
+        {
+            try
+            {
+                var merchantsResponse = await MerchantService.GetAllMerchantsAsync();
+                if (merchantsResponse.IsSuccess && merchantsResponse.Data != null && merchantsResponse.Data.Any())
+                {
+                    MerchantId = merchantsResponse.Data.First().Id;
+                }
+            }
+            catch { /* Fallback to empty if fails */ }
+        }
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        IsLoading = true;
+        ErrorMessage = "";
+        try
+        {
+            var filter = new PaginationFilter { PageNumber = 1, PageSize = 100, SearchTerm = SearchTerm };
+            var response = await CustomerService.GetCustomersAsync(MerchantId, filter);
+            if (response.IsSuccess && response.Data != null)
+            {
+                CustomerList = response.Data.Data.ToList();
+                TotalRecords = response.Data.TotalRecords;
+            }
+            else
+            {
+                ErrorMessage = response.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "Failed to load customers: " + ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void HandleSearch()
+    {
+        // Simple debounce could be added here
+        _ = LoadCustomers();
+    }
+
+    private void ShowAddModal()
+    {
+        IsEditMode = false;
+        CurrentCustomer = new CreateCustomerRequest { MerchantId = MerchantId };
+        ShowModal = true;
+    }
+
+    private void ShowEditModal(CustomerResponseDto customer)
+    {
+        IsEditMode = true;
+        EditingId = customer.Id;
+        CurrentCustomer = new CreateCustomerRequest
+        {
+            MerchantId = MerchantId,
+            Name = customer.Name,
+            PhoneNumber = customer.PhoneNumber,
+            Email = customer.Email
+        };
+        ShowModal = true;
+    }
+
+    private void CloseModal()
+    {
+        ShowModal = false;
+    }
+
+    private async Task SaveCustomer()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentCustomer.Name)) return;
+
+        IsSaving = true;
+        try
+        {
+            bool isSuccess;
+            if (IsEditMode && EditingId.HasValue)
+            {
+                var response = await CustomerService.UpdateCustomerAsync(EditingId.Value, CurrentCustomer);
+                isSuccess = response.IsSuccess;
+            }
+            else
+            {
+                var response = await CustomerService.CreateCustomerAsync(CurrentCustomer);
+                isSuccess = response.IsSuccess;
+            }
+
+            if (isSuccess)
+            {
+                ShowModal = false;
+                await LoadCustomers();
+            }
+            else
+            {
+                // Handle error (maybe show an alert)
+            }
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task DeleteCustomer(Guid id)
+    {
+        // Add a confirmation dialog here in a real app
+        var response = await CustomerService.DeleteCustomerAsync(id);
+        if (response.IsSuccess)
+        {
+            await LoadCustomers();
+        }
+    }
 }

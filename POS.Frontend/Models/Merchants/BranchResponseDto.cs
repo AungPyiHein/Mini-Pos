@@ -9,3 +9,17 @@ public class BranchResponseDto
     public string? Address { get; set; }
     public int ActiveUsersCount { get; set; }
 }
+
+public class CreateBranchRequest
+{
+    public string Name { get; set; } = null!;
+    public string Address { get; set; } = null!;
+    public Guid MerchantId { get; set; }
+}
+
+public class UpdateBranchRequest
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string Address { get; set; } = null!;
+}
