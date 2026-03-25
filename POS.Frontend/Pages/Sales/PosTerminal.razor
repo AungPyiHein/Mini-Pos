@@ -1,5 +1,14 @@
 @page "/sales/terminal"
 @layout MainLayout
+@using POS.Frontend.Models.Products
+@using POS.Frontend.Models.Categories
+@using POS.Frontend.Models.Sales
+@using POS.Frontend.Models.Merchants
+@using POS.Shared.Models
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject ISaleService SaleService
+@inject IBranchService BranchService
 
 <div class="flex gap-4 h-[calc(100vh-7.5rem)]">
 
@@ -10,37 +19,59 @@
         <div class="flex gap-3">
             <div class="relative flex-1">
                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" placeholder="Search products…" class="form-input pl-9" @bind="SearchQuery" />
+                <input type="text" placeholder="Search products…" class="form-input pl-9" 
+                       @bind="SearchQuery" @onkeyup="HandleSearch" />
             </div>
-        </div>
-
-        <!-- Category chips -->
-        <div class="flex gap-2 flex-wrap">
-            @foreach (var cat in Categories)
-            {
-                <button class="px-3 py-1.5 rounded-full text-xs font-medium transition-all @(SelectedCategory == cat ? "bg-accent text-white" : "bg-white border border-border text-muted hover:border-accent hover:text-accent")"
-                        @onclick="() => SelectedCategory = cat">
-                    @cat
-                </button>
-            }
+            <select class="form-input w-48 text-xs" @bind="selectedBranchId">
+                <option value="">— Select Branch —</option>
+                @foreach (var br in BranchList)
+                {
+                    <option value="@br.Id">@br.Name</option>
+                }
+            </select>
+            <select class="form-input w-40 text-xs" value="@SelectedCategoryIdString" @onchange="HandleCategoryChange">
+                <option value="">All Categories</option>
+                @foreach (var cat in CategoryList)
+                {
+                    <option value="@cat.Id.ToString()">@cat.Name</option>
+                }
+            </select>
         </div>
 
         <!-- Product grid -->
         <div class="flex-1 overflow-y-auto">
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                @foreach (var p in FilteredProducts)
-                {
-                    <button class="bg-white rounded-xl border border-border p-3 text-left hover:border-accent hover:shadow-card-hover transition-all group"
-                            @onclick="() => AddToCart(p)">
-                        <div class="w-full h-16 rounded-lg bg-gray-50 flex items-center justify-center text-2xl mb-2 group-hover:bg-indigo-50 transition-colors">
-                            @p.Icon
-                        </div>
-                        <p class="text-xs font-semibold text-gray-800 truncate">@p.Name</p>
-                        <p class="text-xs text-muted">@p.Category</p>
-                        <p class="text-sm font-bold text-accent mt-1">$@p.Price.ToString("0.00")</p>
-                    </button>
-                }
-            </div>
+            @if (isLoading)
+            {
+                <div class="flex items-center justify-center h-full">
+                    <div class="flex flex-col items-center gap-2">
+                        <svg class="animate-spin h-8 w-8 text-accent" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <p class="text-sm text-muted">Loading products...</p>
+                    </div>
+                </div>
+            }
+            else if (!ProductList.Any())
+            {
+                <div class="flex flex-col items-center justify-center h-full text-center">
+                    <p class="text-sm text-muted">No products found</p>
+                </div>
+            }
+            else
+            {
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    @foreach (var p in ProductList)
+                    {
+                        <button class="bg-white rounded-xl border border-border p-3 text-left hover:border-accent hover:shadow-card-hover transition-all group"
+                                @onclick="() => AddToCart(p)">
+                            <div class="w-full h-16 rounded-lg bg-gray-50 flex items-center justify-center text-2xl mb-2 group-hover:bg-indigo-50 transition-colors">
+                                @GetCategoryIcon(p.CategoryName)
+                            </div>
+                            <p class="text-xs font-semibold text-gray-800 truncate">@p.Name</p>
+                            <p class="text-xs text-muted">@p.CategoryName</p>
+                            <p class="text-sm font-bold text-accent mt-1">$@p.Price.ToString("0.00")</p>
+                        </button>
+                    }
+                </div>
+            }
         </div>
     </div>
 
@@ -110,10 +141,29 @@
             </select>
         </div>
 
+        <!-- Status Message -->
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div class="px-5 pb-3">
+                <div class="p-2 rounded text-xs @(isError ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600")">
+                    @statusMessage
+                </div>
+            </div>
+        }
+
         <!-- Charge button -->
         <div class="px-5 pb-5">
-            <button class="w-full btn-primary justify-center py-3 text-sm font-semibold rounded-xl @(CartItems.Any() ? "" : "opacity-50 cursor-not-allowed")">
-                Charge $@Total.ToString("0.00")
+            <button class="w-full btn-primary justify-center py-3 text-sm font-semibold rounded-xl @(CartItems.Any() && !isProcessing ? "" : "opacity-50 cursor-not-allowed")"
+                    @onclick="HandleCheckout" disabled="@(isProcessing || !CartItems.Any())">
+                @if (isProcessing)
+                {
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>Processing...</span>
+                }
+                else
+                {
+                    <span>Charge $@Total.ToString("0.00")</span>
+                }
             </button>
         </div>
 
@@ -121,54 +171,198 @@
 </div>
 
 @code {
-    string SearchQuery = "";
-    string SelectedCategory = "All";
+    private string SearchQuery = "";
+    private Guid? selectedCategoryId;
+    private bool isLoading = true;
 
-    List<string> Categories = new() { "All", "Beverages", "Food", "Bakery", "Snacks" };
+    private List<ProductsResponseDto> ProductList = new();
+    private List<CategoryResponseDto> CategoryList = new();
+    private List<BranchResponseDto> BranchList = new();
+    private List<CartItem> CartItems = new();
+    
+    private Guid? selectedBranchId;
+    private bool isProcessing = false;
+    private string statusMessage = "";
+    private bool isError = false;
 
-    record Product(string Name, string Icon, string Category, decimal Price);
-    record CartItem(string Name, string Icon, decimal Price) { public int Qty { get; set; } = 1; }
-
-    List<Product> Products = new()
+    private class CartItem
     {
-        new("Espresso",      "☕", "Beverages", 3.50m),
-        new("Latte",         "🥛", "Beverages", 4.50m),
-        new("Orange Juice",  "🧃", "Beverages", 3.00m),
-        new("Green Tea",     "🍵", "Beverages", 2.50m),
-        new("Margherita",    "🍕", "Food",      16.00m),
-        new("Caesar Salad",  "🥗", "Food",      12.00m),
-        new("Cheeseburger",  "🍔", "Food",      11.50m),
-        new("Fish & Chips",  "🐟", "Food",      14.00m),
-        new("Croissant",     "🥐", "Bakery",     3.50m),
-        new("Choc. Cake",    "🍰", "Bakery",     5.50m),
-        new("Muffin",        "🧁", "Bakery",     2.75m),
-        new("Chips",         "🍟", "Snacks",     2.00m),
-        new("Popcorn",       "🍿", "Snacks",     3.00m),
-        new("Nuts Mix",      "🥜", "Snacks",     4.00m),
-    };
-
-    List<CartItem> CartItems = new();
-
-    IEnumerable<Product> FilteredProducts => Products.Where(p =>
-        (SelectedCategory == "All" || p.Category == SelectedCategory) &&
-        (string.IsNullOrWhiteSpace(SearchQuery) || p.Name.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)));
-
-    decimal Subtotal => CartItems.Sum(i => i.Price * i.Qty);
-    decimal Tax => Math.Round(Subtotal * 0.05m, 2);
-    decimal Total => Subtotal + Tax;
-
-    void AddToCart(Product p)
-    {
-        var existing = CartItems.FirstOrDefault(c => c.Name == p.Name);
-        if (existing != null) existing.Qty++;
-        else CartItems.Add(new CartItem(p.Name, p.Icon, p.Price));
+        public Guid ProductId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public int Qty { get; set; } = 1;
     }
 
-    void ChangeQty(CartItem item, int delta)
+    private string SelectedCategoryIdString => selectedCategoryId?.ToString() ?? "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadCategories(), LoadProducts(), LoadBranches());
+    }
+
+    private async Task LoadBranches()
+    {
+        var response = await BranchService.GetAllBranchesAsync();
+        if (response?.Data != null)
+        {
+            BranchList = response.Data.ToList();
+            if (BranchList.Any())
+            {
+                selectedBranchId = BranchList.First().Id;
+            }
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        var response = await CategoryService.GetCategoriesAsync(new PaginationFilter { PageSize = 100 });
+        if (response?.Data?.Data != null)
+        {
+            CategoryList = response.Data.Data.ToList();
+        }
+    }
+
+    private async Task LoadProducts()
+    {
+        isLoading = true;
+        try 
+        {
+            var filter = new PaginationFilter() 
+            { 
+                PageNumber = 1, 
+                PageSize = 50,
+                SearchTerm = SearchQuery,
+                CategoryId = selectedCategoryId
+            };
+            var response = await ProductService.GetProductsAsync(filter);
+            if (response?.Data?.Data != null)
+            {
+                ProductList = response.Data.Data.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading products: {ex.Message}");
+            ProductList = new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSearch(KeyboardEventArgs e)
+    {
+        await LoadProducts();
+    }
+
+    private async Task HandleCategoryChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (Guid.TryParse(value, out var guid))
+            selectedCategoryId = guid;
+        else
+            selectedCategoryId = null;
+        
+        await LoadProducts();
+    }
+
+    private decimal Subtotal => CartItems.Sum(i => i.Price * i.Qty);
+    private decimal Tax => Math.Round(Subtotal * 0.05m, 2);
+    private decimal Total => Subtotal + Tax;
+
+    private void AddToCart(ProductsResponseDto p)
+    {
+        var existing = CartItems.FirstOrDefault(c => c.ProductId == p.Id);
+        if (existing != null) 
+        {
+            existing.Qty++;
+        }
+        else 
+        {
+            CartItems.Add(new CartItem 
+            { 
+                ProductId = p.Id, 
+                Name = p.Name, 
+                Icon = GetCategoryIcon(p.CategoryName), 
+                Price = p.Price 
+            });
+        }
+    }
+
+    private void ChangeQty(CartItem item, int delta)
     {
         item.Qty += delta;
         if (item.Qty <= 0) CartItems.Remove(item);
     }
 
-    void ClearCart() => CartItems.Clear();
+    private void ClearCart() 
+    {
+        CartItems.Clear();
+        statusMessage = "";
+    }
+
+    private async Task HandleCheckout()
+    {
+        if (isProcessing || !CartItems.Any()) return;
+
+        isProcessing = true;
+        statusMessage = "";
+        isError = false;
+
+        try
+        {
+            if (selectedBranchId == null || selectedBranchId == Guid.Empty)
+            {
+                statusMessage = "Please select a branch before checking out.";
+                isError = true;
+                return;
+            }
+
+            var request = new CreateOrderRequest
+            {
+                BranchId = selectedBranchId.Value,
+                Items = CartItems.Select(i => new CreateOrderItemRequest
+                {
+                    ProductId = i.ProductId,
+                    Quantity = i.Qty
+                }).ToList()
+            };
+
+            var response = await SaleService.CreateOrderAsync(request);
+            if (response != null && response.Message == "Order Created")
+            {
+                statusMessage = "Order completed successfully!";
+                isError = false;
+                CartItems.Clear();
+            }
+            else
+            {
+                statusMessage = response?.Message ?? "Failed to create order";
+                isError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Error: {ex.Message}";
+            isError = true;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private string GetCategoryIcon(string category)
+    {
+        return category?.ToLower() switch
+        {
+            "beverages" => "☕",
+            "food" => "🍔",
+            "bakery" => "🥐",
+            "snacks" => "🍟",
+            _ => "📦"
+        };
+    }
 }

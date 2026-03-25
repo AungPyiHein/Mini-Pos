@@ -1,6 +1,12 @@
 @page "/products"
 @layout MainLayout
 @inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject IMerchantService MerchantService
+@using POS.Frontend.Models
+@using POS.Frontend.Models.Categories
+@using POS.Frontend.Models.Products
+@using POS.Shared.Models
 
 <div class="space-y-5">
 
@@ -9,7 +15,7 @@
             <h2 class="page-title">Products</h2>
             <p class="page-subtitle">Manage your product catalog</p>
         </div>
-        <button class="btn-primary">
+        <button class="btn-primary" @onclick="OpenAddModal">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
             Add Product
         </button>
@@ -18,13 +24,14 @@
     <div class="card">
         <div class="card-header">
             <div class="flex gap-3 flex-wrap">
-                <input type="text" placeholder="Search products…" class="form-input max-w-xs" />
-                <select class="form-input w-40">
-                    <option>All Categories</option>
-                    <option>Beverages</option>
-                    <option>Food</option>
-                    <option>Bakery</option>
-                    <option>Snacks</option>
+                <input type="text" placeholder="Search products…" class="form-input max-w-xs" 
+                       @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+                <select class="form-input w-40" value="@SelectedCategoryIdString" @onchange="HandleCategoryChange">
+                    <option value="">All Categories</option>
+                    @foreach (var cat in CategoryList)
+                    {
+                        <option value="@cat.Id.ToString()">@cat.Name</option>
+                    }
                 </select>
             </div>
         </div>
@@ -68,8 +75,8 @@
                                 </td>
                                 <td>
                                     <div class="flex gap-1">
-                                        <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
-                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500">Delete</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => OpenEditModal(p)">Edit</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => DeleteProduct(p.Id)">Delete</button>
                                     </div>
                                 </td>
                             </tr>
@@ -80,13 +87,141 @@
         </div>
     </div>
 
+    @if (showModal)
+    {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-gray-800">@(isEditMode ? "Edit Product" : "Add New Product")</h3>
+                    <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Product Name</label>
+                        <input type="text" @bind="formModel.Name" class="form-input" placeholder="e.g. Espresso" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Price ($)</label>
+                            <input type="number" step="0.01" @bind="formModel.Price" class="form-input" placeholder="0.00" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">SKU</label>
+                            <input type="text" @bind="formModel.SKU" class="form-input" placeholder="SKU-001" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Category</label>
+                        <select @bind="formModel.CategoryIdString" class="form-input">
+                            <option value="">Select Category</option>
+                            @foreach (var cat in CategoryList)
+                            {
+                                <option value="@cat.Id.ToString()">@cat.Name</option>
+                            }
+                        </select>
+                    </div>
+                    @if (MerchantList.Count > 1)
+                    {
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Merchant</label>
+                            <select @bind="formModel.MerchantIdString" class="form-input">
+                                @foreach (var m in MerchantList)
+                                {
+                                    <option value="@m.Id.ToString()">@m.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                    <button @onclick="CloseModal" class="btn-secondary">Cancel</button>
+                    <button @onclick="SaveProduct" class="btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        }
+                        @(isEditMode ? "Update Product" : "Create Product")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
 </div>
 
 @code {
     private List<ProductsResponseDto> ProductList = new();
+    private List<CategoryResponseDto> CategoryList = new();
+    private List<MerchantResponseDto> MerchantList = new();
     private bool isLoading = true;
+    private bool showModal = false;
+    private bool isEditMode = false;
+    private bool isSaving = false;
+    private string searchTerm = string.Empty;
+    private Guid? selectedCategoryId;
+    private ProductFormModel formModel = new();
+
+    private class ProductFormModel
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public string SKU { get; set; } = string.Empty;
+        public Guid CategoryId { get; set; }
+        public Guid MerchantId { get; set; }
+
+        public string CategoryIdString
+        {
+            get => CategoryId == Guid.Empty ? "" : CategoryId.ToString();
+            set => CategoryId = Guid.TryParse(value, out var guid) ? guid : Guid.Empty;
+        }
+
+        public string MerchantIdString
+        {
+            get => MerchantId == Guid.Empty ? "" : MerchantId.ToString();
+            set => MerchantId = Guid.TryParse(value, out var guid) ? guid : Guid.Empty;
+        }
+    }
+
+    private string SelectedCategoryIdString => selectedCategoryId?.ToString() ?? "";
+
+    private async Task HandleCategoryChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (Guid.TryParse(value, out var guid))
+            selectedCategoryId = guid;
+        else
+            selectedCategoryId = null;
+        
+        await LoadData();
+    }
 
     protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadData(), LoadCategories(), LoadMerchants());
+    }
+
+    private async Task LoadMerchants()
+    {
+        var response = await MerchantService.GetAllMerchantsAsync();
+        if (response?.Data != null)
+        {
+            MerchantList = response.Data.ToList();
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        var response = await CategoryService.GetCategoriesAsync(new POS.Shared.Models.PaginationFilter { PageSize = 100 });
+        if (response?.Data?.Data != null)
+        {
+            CategoryList = response.Data.Data.ToList();
+        }
+    }
+
+    private async Task HandleSearch(KeyboardEventArgs e)
     {
         await LoadData();
     }
@@ -94,15 +229,114 @@
     private async Task LoadData()
     {
         isLoading = true;
-        
-        var filter = new POS.Shared.Models.PaginationFilter() { PageNumber = 1, PageSize = 50 };
-        var response = await ProductService.GetProductsAsync(filter);
-        if (response?.Data?.Data != null)
+        try 
         {
-            ProductList = response.Data.Data.ToList();
+            var filter = new POS.Shared.Models.PaginationFilter() 
+            { 
+                PageNumber = 1, 
+                PageSize = 50,
+                SearchTerm = searchTerm,
+                CategoryId = selectedCategoryId
+            };
+            var response = await ProductService.GetProductsAsync(filter);
+            if (response?.Data?.Data != null)
+            {
+                ProductList = response.Data.Data.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading products: {ex.Message}");
+            ProductList = new();
+            // In a real app, show a toast notification here
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenAddModal()
+    {
+        isEditMode = false;
+        formModel = new ProductFormModel 
+        { 
+            MerchantId = MerchantList.FirstOrDefault()?.Id ?? Guid.Empty,
+            CategoryId = CategoryList.FirstOrDefault()?.Id ?? Guid.Empty
+        };
+        showModal = true;
+    }
+
+    private void OpenEditModal(ProductsResponseDto p)
+    {
+        isEditMode = true;
+        formModel = new ProductFormModel
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Price = p.Price,
+            SKU = p.SKU,
+            CategoryId = p.CategoryId,
+            MerchantId = p.MerchantId
+        };
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private async Task SaveProduct()
+    {
+        if (string.IsNullOrWhiteSpace(formModel.Name) || formModel.CategoryId == Guid.Empty) return;
+
+        isSaving = true;
+        ApiResponse<bool> result;
+
+        if (isEditMode)
+        {
+            var request = new UpdateProductRequest
+            {
+                Id = formModel.Id,
+                Name = formModel.Name,
+                Price = formModel.Price,
+                SKU = formModel.SKU,
+                CategoryId = formModel.CategoryId
+            };
+            result = await ProductService.UpdateProductAsync(request);
+        }
+        else
+        {
+            var request = new CreateProductRequest
+            {
+                Name = formModel.Name,
+                Price = formModel.Price,
+                SKU = formModel.SKU,
+                CategoryId = formModel.CategoryId,
+                MerchantId = formModel.MerchantId
+            };
+            var createResult = await ProductService.CreateProductAsync(request);
+            result = new ApiResponse<bool> { Message = createResult.Message, Data = createResult.Data != Guid.Empty };
         }
 
-        isLoading = false;
+        if (result.Data)
+        {
+            showModal = false;
+            await LoadData();
+        }
+        
+        isSaving = false;
+    }
+
+    private async Task DeleteProduct(Guid id)
+    {
+        // Simple confirm for now
+        var result = await ProductService.DeleteProductAsync(id);
+        if (result.Data)
+        {
+            await LoadData();
+        }
     }
 
     private string GetCategoryIcon(string category)

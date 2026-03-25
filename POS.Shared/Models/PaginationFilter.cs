@@ -19,6 +19,7 @@ namespace POS.Shared.Models
         }
 
         public string? SearchTerm { get; set; }
+        public Guid? CategoryId { get; set; }
         public string? SortColumn { get; set; }
         public string SortDirection { get; set; } = "asc";
     }

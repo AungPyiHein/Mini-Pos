@@ -1,5 +1,9 @@
 @page "/categories"
 @layout MainLayout
+@using POS.Frontend.Services.Categories
+@using POS.Frontend.Models.Categories
+@using POS.Shared.Models
+@inject ICategoryService CategoryService
 
 <div class="space-y-5">
 
@@ -26,34 +30,62 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach (var c in CategoryList)
+                <tbody class="relative">
+                    @if (_isLoading)
                     {
                         <tr>
-                            <td>
-                                <div class="flex items-center gap-2">
-                                    <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-sm">@c.Icon</div>
-                                    <span class="font-medium text-gray-800">@c.Name</span>
-                                </div>
-                            </td>
-                            <td class="text-muted">@c.Description</td>
-                            <td>@c.ProductCount products</td>
-                            <td>
-                                @if (c.Active)
-                                { <span class="badge badge-success">Active</span> }
-                                else
-                                { <span class="badge badge-warning">Archived</span> }
-                            </td>
-                            <td>
-                                <div class="flex gap-1">
-                                    <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
-                                    @if (c.Active)
-                                    { <button class="btn-ghost py-1 px-2 text-xs text-red-500">Archive</button> }
-                                    else
-                                    { <button class="btn-ghost py-1 px-2 text-xs text-emerald-600">Restore</button> }
+                            <td colspan="5" class="text-center py-8">
+                                <div class="flex flex-col items-center justify-center text-muted">
+                                    <svg class="animate-spin h-8 w-8 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <p>Loading categories...</p>
                                 </div>
                             </td>
                         </tr>
+                    }
+                    else if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-8 text-red-500">
+                                <p>@_errorMessage</p>
+                                <button class="btn-secondary mt-4" @onclick="LoadCategories">Try Again</button>
+                            </td>
+                        </tr>
+                    }
+                    else if (!CategoryList.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-8 text-muted">
+                                <p>No categories found.</p>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in CategoryList)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-sm">📁</div>
+                                        <span class="font-medium text-gray-800">@c.Name</span>
+                                    </div>
+                                </td>
+                                <td class="text-muted">@c.Description</td>
+                                <td>@c.ProductCount products</td>
+                                <td>
+                                    <span class="badge badge-success">Active</span>
+                                </td>
+                                <td>
+                                    <div class="flex gap-1">
+                                        <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500">Archive</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     }
                 </tbody>
             </table>
@@ -63,14 +95,30 @@
 </div>
 
 @code {
-    record CategoryRow(string Icon, string Name, string Description, int ProductCount, bool Active);
+    private List<CategoryResponseDto> CategoryList = new();
+    private bool _isLoading = true;
+    private string? _errorMessage;
 
-    List<CategoryRow> CategoryList = new()
+    protected override async Task OnInitializedAsync()
     {
-        new("☕", "Beverages", "Hot and cold drinks",          4, true),
-        new("🍕", "Food",      "Main course items",            4, true),
-        new("🥐", "Bakery",    "Fresh baked goods",           3, true),
-        new("🍟", "Snacks",    "Light bites and snacks",      2, true),
-        new("🧊", "Frozen",    "Frozen and chilled products", 0, false),
-    };
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var filter = new PaginationFilter { PageNumber = 1, PageSize = 100 };
+        var response = await CategoryService.GetCategoriesAsync(filter);
+        if (response?.Data?.Data != null)
+        {
+            CategoryList = response.Data.Data.ToList();
+        }
+        else
+        {
+            _errorMessage = response?.Message ?? "Unknown error occurred";
+        }
+        _isLoading = false;
+    }
 }

@@ -1,5 +1,6 @@
 @page "/merchants"
 @layout MainLayout
+@inject POS.Frontend.Services.Merchants.IMerchantService MerchantService
 
 <div class="space-y-5">
 
@@ -14,67 +15,104 @@
         </button>
     </div>
 
-    <div class="card">
-        <div class="overflow-x-auto">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Merchant Name</th>
-                        <th>Contact Email</th>
-                        <th>Branches</th>
-                        <th>Subscription</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var m in MerchantList)
-                    {
-                        <tr>
-                            <td>
-                                <div class="flex items-center gap-2">
-                                    <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                                        <span class="text-gray-700 font-bold text-xs">@m.Name[0]</span>
-                                    </div>
-                                    <span class="font-medium text-gray-800">@m.Name</span>
-                                </div>
-                            </td>
-                            <td class="text-muted">@m.Email</td>
-                            <td>@m.BranchCount</td>
-                            <td>
-                                @if (m.Plan == "Pro")
-                                { <span class="badge bg-indigo-100 text-indigo-700">Pro</span> }
-                                else
-                                { <span class="badge badge-info">Basic</span> }
-                            </td>
-                            <td>
-                                @if (m.Active)
-                                { <span class="badge badge-success">Active</span> }
-                                else
-                                { <span class="badge badge-warning">Suspended</span> }
-                            </td>
-                            <td>
-                                <div class="flex gap-1">
-                                    <button class="btn-ghost py-1 px-2 text-xs">Manage</button>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+    @if (IsLoading)
+    {
+        <div class="flex justify-center py-20">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
         </div>
-    </div>
+    }
+    else if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+            @ErrorMessage
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Merchant Name</th>
+                            <th>Contact Email</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!MerchantList.Any())
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center py-10 text-muted italic">No merchants found</td>
+                            </tr>
+                        }
+                        @foreach (var m in MerchantList)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                                            <span class="text-gray-700 font-bold text-xs">@m.Name[0]</span>
+                                        </div>
+                                        <span class="font-medium text-gray-800">@m.Name</span>
+                                    </div>
+                                </td>
+                                <td class="text-muted">@m.ContactEmail</td>
+                                <td>
+                                    @if (m.isActive)
+                                    { <span class="badge badge-success">Active</span> }
+                                    else
+                                    { <span class="badge badge-warning">Suspended</span> }
+                                </td>
+                                <td>
+                                    <div class="flex gap-1">
+                                        <button class="btn-ghost py-1 px-2 text-xs">Manage</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 
 </div>
 
 @code {
-    record MerchantRow(string Name, string Email, int BranchCount, string Plan, bool Active);
+    private List<MerchantResponseDto> MerchantList = new();
+    private bool IsLoading = true;
+    private string ErrorMessage = "";
 
-    List<MerchantRow> MerchantList = new()
+    protected override async Task OnInitializedAsync()
     {
-        new("Coffee Corp", "admin@coffeecorp.com", 3, "Pro", true),
-        new("Foodies LLC", "owner@foodies.com", 2, "Pro", true),
-        new("Quick Mart",  "hello@quickmart.com", 1, "Basic", true),
-        new("Test Store",  "test@store.com", 0, "Basic", false),
-    };
+        await LoadMerchants();
+    }
+
+    private async Task LoadMerchants()
+    {
+        IsLoading = true;
+        ErrorMessage = "";
+        try
+        {
+            var response = await MerchantService.GetAllMerchantsAsync();
+            if (response.IsSuccess && response.Data != null)
+            {
+                MerchantList = response.Data.ToList();
+            }
+            else
+            {
+                ErrorMessage = response.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An unexpected error occurred: " + ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
 }

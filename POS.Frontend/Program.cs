@@ -3,6 +3,11 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using POS.Frontend;
 
 using POS.Frontend.Services.Products;
+using POS.Frontend.Services.Categories;
+using POS.Frontend.Services.Sales;
+
+using POS.Frontend.Services.Merchants;
+using POS.Frontend.Services.Inventory;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -12,5 +17,10 @@ var backendUrl = builder.Configuration.GetValue<string>("BackendUrl") ?? "https:
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(backendUrl) });
 
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ISaleService, SaleService>();
+builder.Services.AddScoped<IMerchantService, MerchantService>();
+builder.Services.AddScoped<IBranchService, BranchService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
 
 await builder.Build().RunAsync();

@@ -13,6 +13,8 @@ namespace POS.Backend.Features.Products
         public string CategoryName { get; set; }
         public string CategoryDescription { get; set; }
         public string MerchantName { get; set; }
+        public Guid CategoryId { get; set; }
+        public Guid MerchantId { get; set; }
 
     }
     public class CreateProductRequest
@@ -58,6 +60,11 @@ namespace POS.Backend.Features.Products
                                          EF.Functions.Like(p.Sku, $"%{filter.SearchTerm}%"));
             }
 
+            if (filter.CategoryId != null && filter.CategoryId != Guid.Empty)
+            {
+                query = query.Where(p => p.CategoryId == filter.CategoryId);
+            }
+
             var totalRecords = await query.CountAsync();
 
             var products = await query
@@ -75,7 +82,9 @@ namespace POS.Backend.Features.Products
                 SKU = p.Sku,
                 CategoryName = p.Category?.Name ?? "No Category",
                 CategoryDescription = p.Category?.Description ?? "No Description",
-                MerchantName = p.Merchant?.Name ?? "Unknown Merchant"
+                CategoryId = p.CategoryId,
+                MerchantName = p.Merchant?.Name ?? "Unknown Merchant",
+                MerchantId = p.MerchantId
             }).ToList();
             
             var pagedResponse = new PagedResponse<ProductsResponseDto>(response, totalRecords, filter.PageNumber, filter.PageSize);
@@ -96,7 +105,9 @@ namespace POS.Backend.Features.Products
                     SKU = p.Sku,
                     CategoryName = p.Category != null ? p.Category.Name : "No Category",
                     CategoryDescription = p.Category != null ? p.Category.Description : "No Description",
-                    MerchantName = p.Merchant != null ? p.Merchant.Name : "Unknown Merchant"
+                    CategoryId = p.CategoryId,
+                    MerchantName = p.Merchant != null ? p.Merchant.Name : "Unknown Merchant",
+                    MerchantId = p.MerchantId
                 })
                 .FirstOrDefaultAsync();
             if (product == null)

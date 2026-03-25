@@ -1,5 +1,9 @@
 @page "/sales"
 @layout MainLayout
+@using POS.Frontend.Services.Sales
+@using POS.Frontend.Models.Sales
+@using POS.Shared.Models
+@inject ISaleService SaleService
 
 <div class="space-y-5">
 
@@ -43,31 +47,65 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach (var s in Sales)
+                <tbody class="relative">
+                    @if (_isLoading)
                     {
                         <tr>
-                            <td><span class="font-medium text-accent">#@s.Id</span></td>
-                            <td>@s.Customer</td>
-                            <td><span class="badge badge-info">@s.Branch</span></td>
-                            <td>@s.Items</td>
-                            <td class="text-muted text-xs">@s.DateTime</td>
-                            <td class="font-semibold">$@s.Total</td>
-                            <td><span class="badge @s.BadgeClass">@s.Status</span></td>
-                            <td>
-                                <a href="sales/@s.Id" class="btn-ghost py-1 px-2 text-xs">View</a>
+                            <td colspan="8" class="text-center py-8">
+                                <div class="flex flex-col items-center justify-center text-muted">
+                                    <svg class="animate-spin h-8 w-8 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <p>Loading sales history...</p>
+                                </div>
                             </td>
                         </tr>
+                    }
+                    else if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-8 text-red-500">
+                                <p>@_errorMessage</p>
+                                <button class="btn-secondary mt-4" @onclick="LoadSales">Try Again</button>
+                            </td>
+                        </tr>
+                    }
+                    else if (!Sales.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-8 text-muted">
+                                <p>No transactions found.</p>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var s in Sales)
+                        {
+                            <tr>
+                                <td><span class="font-medium text-accent" title="@s.Id">#@s.Id.ToString().Substring(0, 8)</span></td>
+                                <td>@s.CustomerName</td>
+                                <td><span class="badge badge-info">Main Branch</span></td>
+                                <td>@s.Items.Sum(i => i.Quantity)</td>
+                                <td class="text-muted text-xs">@s.OrderDate.ToString("dd MMM yyyy, HH:mm")</td>
+                                <td class="font-semibold">$@s.TotalAmount.ToString("0.00")</td>
+                                <td><span class="badge badge-success">@s.Status</span></td>
+                                <td>
+                                    <a href="sales/@s.Id" class="btn-ghost py-1 px-2 text-xs">View</a>
+                                </td>
+                            </tr>
+                        }
                     }
                 </tbody>
             </table>
         </div>
         <!-- Pagination -->
         <div class="px-5 py-3 border-t border-border flex items-center justify-between">
-            <p class="text-xs text-muted">Showing 1–10 of 1,284 results</p>
+            <p class="text-xs text-muted">Showing results</p>
             <div class="flex gap-1">
-                <button class="btn-secondary py-1 px-3 text-xs">← Prev</button>
-                <button class="btn-primary py-1 px-3 text-xs">Next →</button>
+                <button class="btn-secondary py-1 px-3 text-xs" disabled>← Prev</button>
+                <button class="btn-primary py-1 px-3 text-xs" disabled>Next →</button>
             </div>
         </div>
     </div>
@@ -75,19 +113,29 @@
 </div>
 
 @code {
-    record SaleRow(string Id, string Customer, string Branch, int Items, string DateTime, string Total, string Status, string BadgeClass);
+    private List<OrderResponseDto> Sales = new();
+    private bool _isLoading = true;
+    private string? _errorMessage;
 
-    List<SaleRow> Sales = new()
+    protected override async Task OnInitializedAsync()
     {
-        new("10284", "Alice Johnson",  "Main Branch",   3, "25 Mar 2026, 14:32", "87.50",  "Completed", "badge badge-success"),
-        new("10283", "Bob Smith",      "Main Branch",   1, "25 Mar 2026, 12:10", "12.00",  "Completed", "badge badge-success"),
-        new("10282", "Carol White",    "North Branch",  5, "24 Mar 2026, 18:45", "214.00", "Completed", "badge badge-success"),
-        new("10281", "David Lee",      "Main Branch",   2, "24 Mar 2026, 11:20", "45.00",  "Refunded",  "badge badge-warning"),
-        new("10280", "Eve Martinez",   "South Branch",  4, "23 Mar 2026, 16:05", "130.75", "Completed", "badge badge-success"),
-        new("10279", "Frank Wilson",   "North Branch",  2, "23 Mar 2026, 10:33", "58.00",  "Completed", "badge badge-success"),
-        new("10278", "Grace Kim",      "Main Branch",   6, "22 Mar 2026, 19:12", "320.00", "Completed", "badge badge-success"),
-        new("10277", "Henry Brown",    "South Branch",  1, "22 Mar 2026, 09:55", "22.50",  "Cancelled", "badge badge-danger"),
-        new("10276", "Isla Clark",     "Main Branch",   3, "21 Mar 2026, 15:40", "97.00",  "Completed", "badge badge-success"),
-        new("10275", "Jack Turner",    "North Branch",  2, "21 Mar 2026, 13:22", "64.50",  "Completed", "badge badge-success"),
-    };
+        await LoadSales();
+    }
+
+    private async Task LoadSales()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        var response = await SaleService.GetAllOrdersAsync();
+        if (response?.Data != null)
+        {
+            Sales = response.Data.ToList();
+        }
+        else
+        {
+            _errorMessage = response?.Message ?? "Unknown error occurred";
+        }
+        _isLoading = false;
+    }
 }
