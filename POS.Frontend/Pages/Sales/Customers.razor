@@ -147,20 +147,26 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Try to get a real merchant ID if possible
-        if (MerchantId == Guid.Empty)
+        IsLoading = true;
+        try
         {
-            try
+            var merchantsResponse = await MerchantService.GetAllMerchantsAsync();
+            if (merchantsResponse.IsSuccess && merchantsResponse.Data != null && merchantsResponse.Data.Any())
             {
-                var merchantsResponse = await MerchantService.GetAllMerchantsAsync();
-                if (merchantsResponse.IsSuccess && merchantsResponse.Data != null && merchantsResponse.Data.Any())
-                {
-                    MerchantId = merchantsResponse.Data.First().Id;
-                }
+                MerchantId = merchantsResponse.Data.First().Id;
+                await LoadCustomers();
             }
-            catch { /* Fallback to empty if fails */ }
+            else
+            {
+                ErrorMessage = "No merchants found. Please create a merchant first.";
+                IsLoading = false;
+            }
         }
-        await LoadCustomers();
+        catch (Exception ex)
+        {
+            ErrorMessage = "Failed to initialize: " + ex.Message;
+            IsLoading = false;
+        }
     }
 
     private async Task LoadCustomers()

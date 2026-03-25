@@ -57,4 +57,49 @@ public class CategoryService : ICategoryService
             return new ApiResponse<CategoryResponseDto> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
+
+    public async Task<ApiResponse<Guid>> CreateCategoryAsync(CreateCategoryRequest request)
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync("/api/categories", request);
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse<Guid>>();
+            if (result != null) result.IsSuccess = response.IsSuccessStatusCode;
+            return result ?? new ApiResponse<Guid> { IsSuccess = false, Message = "Error connecting to server" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<Guid> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> UpdateCategoryAsync(UpdateCategoryRequest request)
+    {
+        try
+        {
+            var response = await _http.PutAsJsonAsync($"/api/categories", request);
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+            if (result != null) result.IsSuccess = response.IsSuccessStatusCode;
+            return result ?? new ApiResponse<bool> { IsSuccess = false, Message = "Error connecting to server" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> DeleteCategoryAsync(Guid id)
+    {
+        try
+        {
+            var response = await _http.DeleteAsync($"/api/categories/{id}");
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+            if (result != null) result.IsSuccess = response.IsSuccessStatusCode;
+            return result ?? new ApiResponse<bool> { IsSuccess = false, Message = "Error connecting to server" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
 }
