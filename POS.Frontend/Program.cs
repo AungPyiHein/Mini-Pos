@@ -9,6 +9,7 @@ using POS.Frontend.Services.Sales;
 using POS.Frontend.Services.Merchants;
 using POS.Frontend.Services.Inventory;
 using POS.Frontend.Services.Users;
+using POS.Frontend.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -25,5 +26,6 @@ builder.Services.AddScoped<IBranchService, BranchService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ThemeService>();
 
 await builder.Build().RunAsync();
