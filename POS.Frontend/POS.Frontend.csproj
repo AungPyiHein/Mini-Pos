@@ -11,6 +11,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.14" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\POS.Shared\POS.Shared.csproj" />
+  </ItemGroup>
+
   <!-- Build Tailwind CSS before each build -->
   <Target Name="BuildTailwind" BeforeTargets="Build">
     <Exec Command="npm run css:build" WorkingDirectory="$(MSBuildProjectDirectory)" />

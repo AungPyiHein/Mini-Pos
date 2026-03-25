@@ -1,5 +1,6 @@
 @page "/products"
 @layout MainLayout
+@inject IProductService ProductService
 
 <div class="space-y-5">
 
@@ -40,33 +41,39 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var p in ProductList)
+                    @if (isLoading)
                     {
-                        <tr>
-                            <td>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-lg">@p.Icon</span>
-                                    <span class="font-medium text-gray-800">@p.Name</span>
-                                </div>
-                            </td>
-                            <td><span class="badge badge-info">@p.Category</span></td>
-                            <td class="font-semibold">$@p.Price</td>
-                            <td>@p.Stock</td>
-                            <td>
-                                @if (p.Stock > 10)
-                                { <span class="badge badge-success">In Stock</span> }
-                                else if (p.Stock > 0)
-                                { <span class="badge badge-warning">Low Stock</span> }
-                                else
-                                { <span class="badge badge-danger">Out of Stock</span> }
-                            </td>
-                            <td>
-                                <div class="flex gap-1">
-                                    <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
-                                    <button class="btn-ghost py-1 px-2 text-xs text-red-500">Delete</button>
-                                </div>
-                            </td>
-                        </tr>
+                        <tr><td colspan="6" class="text-center py-4">Loading products...</td></tr>
+                    }
+                    else if (!ProductList.Any())
+                    {
+                        <tr><td colspan="6" class="text-center py-4 text-gray-500">No products found.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var p in ProductList)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg">@GetCategoryIcon(p.CategoryName)</span>
+                                        <span class="font-medium text-gray-800">@p.Name</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-info">@p.CategoryName</span></td>
+                                <td class="font-semibold">$@p.Price</td>
+                                <td class="text-gray-400">-</td> <!-- Stock not supported yet -->
+                                <td>
+                                    <span class="badge badge-success">Available</span>
+                                </td>
+                                <td>
+                                    <div class="flex gap-1">
+                                        <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     }
                 </tbody>
             </table>
@@ -76,21 +83,37 @@
 </div>
 
 @code {
-    record ProductRow(string Icon, string Name, string Category, string Price, int Stock);
+    private List<ProductsResponseDto> ProductList = new();
+    private bool isLoading = true;
 
-    List<ProductRow> ProductList = new()
+    protected override async Task OnInitializedAsync()
     {
-        new("☕", "Espresso",         "Beverages", "3.50",  45),
-        new("🥛", "Latte",            "Beverages", "4.50",  30),
-        new("🧃", "Orange Juice",     "Beverages", "3.00",  60),
-        new("🍵", "Green Tea",        "Beverages", "2.50",   8),
-        new("🍕", "Margherita Pizza", "Food",      "16.00", 15),
-        new("🥗", "Caesar Salad",     "Food",      "12.00", 20),
-        new("🍔", "Cheeseburger",     "Food",      "11.50",  5),
-        new("🥐", "Croissant",        "Bakery",    "3.50",  25),
-        new("🍰", "Chocolate Cake",   "Bakery",    "5.50",  12),
-        new("🧁", "Muffin",           "Bakery",    "2.75",   0),
-        new("🍟", "Chips",            "Snacks",    "2.00",  80),
-        new("🥜", "Nuts Mix",         "Snacks",    "4.00",   3),
-    };
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        
+        var filter = new POS.Shared.Models.PaginationFilter() { PageNumber = 1, PageSize = 50 };
+        var response = await ProductService.GetProductsAsync(filter);
+        if (response?.Data?.Data != null)
+        {
+            ProductList = response.Data.Data.ToList();
+        }
+
+        isLoading = false;
+    }
+
+    private string GetCategoryIcon(string category)
+    {
+        return category.ToLower() switch
+        {
+            "beverages" => "☕",
+            "food" => "🍔",
+            "bakery" => "🥐",
+            "snacks" => "🍟",
+            _ => "📦"
+        };
+    }
 }
