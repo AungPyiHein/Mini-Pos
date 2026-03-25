@@ -41,7 +41,9 @@ namespace POS.Backend.Features.Auth
         }
         public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(x => x.Username == request.Username);
+            var user = await _context.Users
+                .Include(u => u.Merchant)
+                .FirstOrDefaultAsync(u => u.Username == request.Username && u.DeletedAt == null);
             if (user == null)
             {
                 return Result<AuthResponse>.Failure("Invalid username or password.");

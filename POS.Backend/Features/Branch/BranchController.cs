@@ -4,7 +4,7 @@ using POS.Backend.Features.Branch;
 
 namespace POS.Backend.Features.Branch
 {
-    [Authorize(Roles = "Admin,MerchantAdmin")]
+    //[Authorize(Roles = "Admin,MerchantAdmin")]
     [ApiController]
     [Route("api/[controller]")]
     public class BranchController : ControllerBase

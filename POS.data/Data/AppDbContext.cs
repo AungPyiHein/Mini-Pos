@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using POS.data.Entities;
@@ -213,9 +213,7 @@ public partial class AppDbContext : DbContext
 
         OnModelCreatingPartial(modelBuilder);
 
-        modelBuilder.Entity<Merchant>().HasQueryFilter(m => m.DeletedAt == null);
-        modelBuilder.Entity<Branch>().HasQueryFilter(b => b.DeletedAt == null);
-        modelBuilder.Entity<Product>().HasQueryFilter(p => p.DeletedAt == null);
+        modelBuilder.Entity<Category>().HasQueryFilter(c => !c.IsDeleted);
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);

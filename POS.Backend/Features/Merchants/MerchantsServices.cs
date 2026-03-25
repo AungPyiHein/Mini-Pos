@@ -49,15 +49,15 @@ namespace POS.Backend.Features.Merchants
         {
             var merchants = await _context.Merchants
                 .AsNoTracking()
-                .Where(m => !m.IsDeleted)
+                .Where(m => m.DeletedAt == null)
                 .Select(m => new MerchantResponseDto
                 {
                     Id = m.Id,
                     Name = m.Name,
                     ContactEmail = m.ContactEmail,
                     isActive = m.IsActive,
-                    CategoryCount = m.Categories.Count(),
-                    ProductCount = m.Products.Count()
+                    CategoryCount = m.Categories.Count(c => c.DeletedAt == null),
+                    ProductCount = m.Products.Count(p => p.DeletedAt == null)
                 })
                 .ToListAsync();
             return Result<IEnumerable<MerchantResponseDto>>.Success(merchants);
@@ -67,7 +67,7 @@ namespace POS.Backend.Features.Merchants
             if (!string.IsNullOrEmpty(request.ContactEmail))
             {
                 var emailExists = await _context.Merchants
-                    .AnyAsync(m => m.ContactEmail == request.ContactEmail);
+                    .AnyAsync(m => m.ContactEmail == request.ContactEmail && m.DeletedAt == null);
                 if (emailExists)
                     return Result<Guid>.Failure("Email is already registered to another merchant.");
             }
@@ -77,7 +77,6 @@ namespace POS.Backend.Features.Merchants
                 Name = request.Name,
                 ContactEmail = request.ContactEmail,
                 IsActive = true,
-                IsDeleted = false,
                 CreatedAt = DateTime.UtcNow
             };
             _context.Merchants.Add(merchant);
@@ -87,10 +86,9 @@ namespace POS.Backend.Features.Merchants
         }
         public async Task<Result> DeleteMerchantAsync(Guid id)
         {
-            var merchant = await _context.Merchants.FirstOrDefaultAsync(m => m.Id == id);
-            if (merchant == null || merchant.IsDeleted)
+            var merchant = await _context.Merchants.FirstOrDefaultAsync(m => m.Id == id && m.DeletedAt == null);
+            if (merchant == null)
                 return Result.Failure("Merchant not found.");
-            merchant.IsDeleted = true;
             merchant.DeletedAt = DateTime.UtcNow;
             merchant.IsActive = false;
             await _context.SaveChangesAsync();
@@ -100,15 +98,15 @@ namespace POS.Backend.Features.Merchants
         {
             var merchants = await _context.Merchants
                  .AsNoTracking()
-                 .Where(m => !m.IsDeleted && m.Id == id)
+                 .Where(m => m.DeletedAt == null && m.Id == id)
                  .Select(m => new MerchantResponseDto
                  {
                      Id = m.Id,
                      Name = m.Name,
                      ContactEmail = m.ContactEmail,
                      isActive = m.IsActive,
-                     CategoryCount = m.Categories.Count(),
-                     ProductCount = m.Products.Count()
+                     CategoryCount = m.Categories.Count(c => c.DeletedAt == null),
+                     ProductCount = m.Products.Count(p => p.DeletedAt == null)
                  })
                  .FirstOrDefaultAsync();
             if (merchants == null)
@@ -118,7 +116,7 @@ namespace POS.Backend.Features.Merchants
         public async Task<Result> UpdateMerchantAsync(UpdateMerchantRequest request)
         {
             var existingMerchant = await _context.Merchants
-                .FirstOrDefaultAsync(m => m.Id == request.Id && !m.IsDeleted);
+                .FirstOrDefaultAsync(m => m.Id == request.Id && m.DeletedAt == null);
 
             if (existingMerchant == null)
                 return Result.Failure("Merchant not found.");
@@ -143,9 +141,8 @@ namespace POS.Backend.Features.Merchants
             var merchant = await _context.Merchants.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.Id == id);
             if (merchant == null)
                 return Result.Failure("Merchant not found.");
-            if (!merchant.IsDeleted)
+            if (merchant.DeletedAt == null)
                 return Result.Failure("Merchant is not deleted.");
-            merchant.IsDeleted = false;
             merchant.DeletedAt = null;
             merchant.IsActive = true;
             await _context.SaveChangesAsync();

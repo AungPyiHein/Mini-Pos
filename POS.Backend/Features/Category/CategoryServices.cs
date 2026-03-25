@@ -51,7 +51,7 @@ namespace POS.Backend.Features.Category
         }
         public async Task<Result<PagedResponse<CategoryResponseDto>>> GetAllCategoriesAsync(PaginationFilter filter)
         {
-            var query = _context.Categories.AsNoTracking().Where(c => !c.IsDeleted).AsQueryable();
+            var query = _context.Categories.AsNoTracking().Where(c => c.DeletedAt == null).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
@@ -68,7 +68,7 @@ namespace POS.Backend.Features.Category
                     Id = c.Id,
                     Name = c.Name,
                     Description = c.Description,
-                    ProductCount = _context.Products.Count(p => p.CategoryId == c.Id)
+                    ProductCount = _context.Products.Count(p => p.CategoryId == c.Id && p.DeletedAt == null)
                 }).ToListAsync();
                 
             var pagedResponse = new PagedResponse<CategoryResponseDto>(category, totalRecords, filter.PageNumber, filter.PageSize);
@@ -78,13 +78,14 @@ namespace POS.Backend.Features.Category
         {
             var category = await _context.Categories
                 .AsNoTracking()
-                .Where(c => c.Id == id && !c.IsDeleted)
+                .Include(c => c.Merchant)
+                .Where(c => c.Id == id && c.DeletedAt == null)
                 .Select(c => new CategoryResponseDto
                 {
                     Id = c.Id,
                     Name = c.Name,
                     Description = c.Description,
-                    ProductCount = _context.Products.Count(p => p.CategoryId == c.Id)
+                    ProductCount = _context.Products.Count(p => p.CategoryId == c.Id && p.DeletedAt == null)
                 }).FirstOrDefaultAsync();
             if (category == null)
                 return Result<CategoryResponseDto>.Failure("Category not found");
@@ -93,7 +94,7 @@ namespace POS.Backend.Features.Category
 
         public async Task<Result<Guid>> CreateCategoryAsync(CreateCategoryRequest request)
         {
-            var merchantExists = await _context.Merchants.AnyAsync(m => m.Id == request.MerchantId);
+            var merchantExists = await _context.Merchants.AnyAsync(m => m.Id == request.MerchantId && m.DeletedAt == null);
             if (!merchantExists)
             {
                 return Result<Guid>.Failure("Merchant not found. Please provide a valid Merchant ID.");
@@ -111,7 +112,7 @@ namespace POS.Backend.Features.Category
         }
         public async Task<Result> UpdateCategoryAsync(UpdateCategoryRequest request)
         {
-            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == request.id);
+            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == request.id && c.DeletedAt == null);
             if (category == null)
                 return Result.Failure("Category not found");
             if (!string.IsNullOrEmpty(request.Name))
@@ -124,7 +125,7 @@ namespace POS.Backend.Features.Category
         }
         public async Task<Result> DeleteCategoryAsync(Guid id)
         {
-            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.DeletedAt == null);
 
             if (category == null) return Result.Failure("Category not found or already Deleted.");
             var hasProducts = await _context.Products.AnyAsync(p => p.CategoryId == id && p.DeletedAt == null);
@@ -134,7 +135,6 @@ namespace POS.Backend.Features.Category
                 return Result.Failure("Cannot delete a category that still contains products.");
             }
 
-            category.IsDeleted = true;
             category.DeletedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -148,14 +148,13 @@ namespace POS.Backend.Features.Category
                 .FirstOrDefaultAsync(c => c.Id == id);
             
             if (category == null) return Result.Failure("Category not found.");
-            if (!category.IsDeleted) return Result.Failure("Category is not deleted.");
+            if (category.DeletedAt == null) return Result.Failure("Category is not deleted.");
 
-            if (category.Merchant != null && category.Merchant.IsDeleted)
+            if (category.Merchant != null && category.Merchant.DeletedAt != null)
             {
                 return Result.Failure("Cannot restore this category because the Merchant is deleted.");
             }
 
-            category.IsDeleted = false;
             category.DeletedAt = null;
             await _context.SaveChangesAsync();
             return Result.Success();

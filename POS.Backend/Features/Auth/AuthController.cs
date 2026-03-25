@@ -28,7 +28,7 @@ namespace POS.Backend.Features.Auth
         [HttpPost("logout")]
         public IActionResult Logout()
         {
-            return Ok(new { Message = "Logged out successfully. Please remove the token on the client side." });
+            return Ok(new { Message = "Logged out successfully." });
         }
     }
 }

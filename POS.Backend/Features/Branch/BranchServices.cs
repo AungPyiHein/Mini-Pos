@@ -44,7 +44,7 @@ namespace POS.Backend.Features.Branch
 
         public async Task<Result<Guid>> CreateBranchAsync(CreateBranchRequest request)
         {
-            var merchantExists = await _context.Merchants.AnyAsync(m => m.Id == request.MerchantId);
+            var merchantExists = await _context.Merchants.AnyAsync(m => m.Id == request.MerchantId && m.DeletedAt == null);
             if (!merchantExists) return Result<Guid>.Failure("Merchant not found.");
 
             var nameExists = await _context.Branches.AnyAsync(b =>
@@ -137,10 +137,19 @@ namespace POS.Backend.Features.Branch
         }
         public async Task<Result> RestoreBranchAsync(Guid id)
         {
-            var branch = await _context.Branches.IgnoreQueryFilters().FirstOrDefaultAsync(b => b.Id == id);
+            var branch = await _context.Branches
+                .IgnoreQueryFilters()
+                .Include(b => b.Merchant)
+                .FirstOrDefaultAsync(b => b.Id == id);
+
             if (branch == null) return Result.Failure("Branch not found.");
             if (branch.DeletedAt == null) return Result.Failure("Branch is not deleted.");
-            
+
+            if (branch.Merchant != null && branch.Merchant.DeletedAt != null)
+            {
+                return Result.Failure("Cannot restore this branch because the Merchant is deleted.");
+            }
+
             branch.DeletedAt = null;
             await _context.SaveChangesAsync();
             return Result.Success();

@@ -18,8 +18,18 @@ using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazor", policy =>
+    {
+        policy.WithOrigins("https://localhost:7062") 
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));  
-// Add services to the container.
 builder.Services.AddScoped<IProductsServices, ProductsServices>();
 builder.Services.AddScoped<ICategoryServices, CategoryService>();
 builder.Services.AddScoped<IMerchantsServices, MerchantsServices>();
@@ -30,7 +40,6 @@ builder.Services.AddScoped<ICustomerServices, CustomerServices>();
 builder.Services.AddScoped<IInventoryServices, InventoryServices>();
 builder.Services.AddScoped<ISalesServices, SalesServices>();
 
-// Add JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -97,6 +106,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowBlazor");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -25,6 +25,8 @@ namespace POS.Backend.Features.Sales
         public Guid Id { get; set; }
         public DateTime OrderDate { get; set; }
         public decimal TotalAmount { get; set; }
+        public string CustomerName { get; set; } = "Walk-in Customer";
+        public string Status { get; set; } = "Completed";
         public List<OrderItemResponseDto> Items { get; set; } = new();
     }
 
@@ -73,8 +75,8 @@ namespace POS.Backend.Features.Sales
 
                 foreach (var itemRequest in request.Items)
                 {
-                    var product = await _context.Products.FindAsync(itemRequest.ProductId);
-                    if (product == null) return Result<Guid>.Failure($"Product with ID {itemRequest.ProductId} not found.");
+                    var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == itemRequest.ProductId && p.DeletedAt == null);
+                    if (product == null) return Result<Guid>.Failure($"Product with ID {itemRequest.ProductId} not found or is deleted.");
 
                     var subTotal = product.Price * itemRequest.Quantity;
                     var orderItem = new OrderItem
@@ -147,6 +149,7 @@ namespace POS.Backend.Features.Sales
             var orders = await _context.Orders
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
+                .Include(o => o.Customer)
                 .Where(o => o.DeletedAt == null)
                 .OrderByDescending(o => o.OrderDate)
                 .Select(o => new OrderResponseDto
@@ -154,6 +157,8 @@ namespace POS.Backend.Features.Sales
                     Id = o.Id,
                     OrderDate = o.OrderDate,
                     TotalAmount = o.TotalAmount,
+                    CustomerName = o.Customer != null ? o.Customer.Name : "Walk-in Customer",
+                    Status = "Completed",
                     Items = o.OrderItems.Select(oi => new OrderItemResponseDto
                     {
                         ProductId = oi.ProductId,

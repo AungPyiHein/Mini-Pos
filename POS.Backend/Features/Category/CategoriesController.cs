@@ -5,7 +5,7 @@ using POS.Backend.Common;
 
 namespace POS.Backend.Features.Category
 {
-    [Authorize]
+   // [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class CategoriesController : ControllerBase
@@ -16,28 +16,28 @@ namespace POS.Backend.Features.Category
             _categoryServices = categoryServices;
         }
         [HttpGet]
-        [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAllCategories([FromQuery] PaginationFilter filter)
         {
             var result = await _categoryServices.GetAllCategoriesAsync(filter);
             return result.IsSuccess ? Ok(new { Message = "Categories retrieved successfully", Data = result.Value }) : BadRequest(new { Message = result.Error });
         }
         [HttpGet("{id}")]
-        [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetCategoryById(Guid id)
         {
             var result = await _categoryServices.GetCategoryByIdAsync(id);
             return result.IsSuccess ? Ok(new { Message = "Category retrieved successfully", Data = result.Value }) : NotFound(new { Message = result.Error });
         }
         [HttpPost]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        //[Authorize(Roles = "Admin,MerchantAdmin")]
         public async Task<IActionResult> CreateCategory(CreateCategoryRequest request)
         {
             var result = await _categoryServices.CreateCategoryAsync(request);
             return result.IsSuccess ? Ok(new { Message = "Category Created", Data = result.Value }) : BadRequest(new { Message = result.Error });
         }
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+       // [Authorize(Roles = "Admin,MerchantAdmin")]
         public async Task<IActionResult> UpdateCategory(Guid id, UpdateCategoryRequest request)
         {
             if (id != request.id)
@@ -46,7 +46,7 @@ namespace POS.Backend.Features.Category
             return result.IsSuccess ? Ok(new { Message = "Category Updated" }) : BadRequest(new { Message = result.Error });
         }
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        //[Authorize(Roles = "Admin,MerchantAdmin")]
         public async Task<IActionResult> DeleteCategory(Guid id)
         {
             var result = await _categoryServices.DeleteCategoryAsync(id);

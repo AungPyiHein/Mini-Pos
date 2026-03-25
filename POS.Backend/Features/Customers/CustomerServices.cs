@@ -90,6 +90,9 @@ namespace POS.Backend.Features.Customers
 
         public async Task<Result<Guid>> CreateCustomerAsync(CreateCustomerRequest request)
         {
+            var merchantExists = await _context.Merchants.AnyAsync(m => m.Id == request.MerchantId && m.DeletedAt == null);
+            if (!merchantExists) return Result<Guid>.Failure("Merchant not found.");
+
             var customer = new Customer
             {
                 Id = Guid.NewGuid(),

@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\POS.data\POS.data.csproj" />
+    <ProjectReference Include="..\POS.Shared\POS.Shared.csproj" />
   </ItemGroup>
 
 </Project>

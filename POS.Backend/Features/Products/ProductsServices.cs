@@ -50,7 +50,7 @@ namespace POS.Backend.Features.Products
         }
         public async Task<Result<PagedResponse<ProductsResponseDto>>> GetAllProductsAsync(PaginationFilter filter)
         {
-            var query = _context.Products.AsNoTracking().AsQueryable();
+            var query = _context.Products.AsNoTracking().Where(p => p.DeletedAt == null).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
@@ -87,6 +87,7 @@ namespace POS.Backend.Features.Products
                 .AsNoTracking()
                 .Include(p => p.Category)
                 .Include(p => p.Merchant)
+                .Where(p => p.Id == id && p.DeletedAt == null)
                 .Select(p => new ProductsResponseDto
                 {
                     Id = p.Id,
@@ -97,7 +98,7 @@ namespace POS.Backend.Features.Products
                     CategoryDescription = p.Category != null ? p.Category.Description : "No Description",
                     MerchantName = p.Merchant != null ? p.Merchant.Name : "Unknown Merchant"
                 })
-                .FirstOrDefaultAsync(p => p.Id == id);
+                .FirstOrDefaultAsync();
             if (product == null)
                 return Result<ProductsResponseDto>.Failure("Product not found");
             return Result<ProductsResponseDto>.Success(product);
@@ -106,9 +107,13 @@ namespace POS.Backend.Features.Products
 
         public async Task<Result<Guid>> CreateProductAsync(CreateProductRequest request)
         {
-            var categoryExist = await _context.Categories.AnyAsync(c => c.Id == request.CategoryId);
+            var categoryExist = await _context.Categories.AnyAsync(c => c.Id == request.CategoryId && c.DeletedAt == null);
             if (!categoryExist)
-                return Result<Guid>.Failure("Category not found");
+                return Result<Guid>.Failure("Category not found or is deleted.");
+
+            var merchantExist = await _context.Merchants.AnyAsync(m => m.Id == request.MerchantId && m.DeletedAt == null);
+            if (!merchantExist)
+                return Result<Guid>.Failure("Merchant not found or is deleted.");
 
             var newProduct = new data.Entities.Product
             {
@@ -128,7 +133,7 @@ namespace POS.Backend.Features.Products
 
         public async Task<Result> UpdateProductAsync(UpdateProductRequest request)
         {
-            var existingProduct = await _context.Products.FirstOrDefaultAsync(p => p.Id == request.Id);
+            var existingProduct = await _context.Products.FirstOrDefaultAsync(p => p.Id == request.Id && p.DeletedAt == null);
             if (existingProduct == null)
                 return Result.Failure("Product not found");
             if (!string.IsNullOrWhiteSpace(request.Name))
@@ -142,7 +147,7 @@ namespace POS.Backend.Features.Products
 
             if (request.CategoryId.HasValue && request.CategoryId != Guid.Empty)
             {
-                var categoryExists = await _context.Categories.AnyAsync(c => c.Id == request.CategoryId);
+                var categoryExists = await _context.Categories.AnyAsync(c => c.Id == request.CategoryId && c.DeletedAt == null);
                 if (!categoryExists) return Result.Failure("The selected Category does not exist.");
 
                 existingProduct.CategoryId = request.CategoryId.Value;
@@ -154,7 +159,7 @@ namespace POS.Backend.Features.Products
         }
         public async Task<Result> DeleteProductAsync(Guid id)
         {
-            var existingProduct = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            var existingProduct = await _context.Products.FirstOrDefaultAsync(p => p.Id == id && p.DeletedAt == null);
             if (existingProduct == null)
                 return Result.Failure("Product not found");
             

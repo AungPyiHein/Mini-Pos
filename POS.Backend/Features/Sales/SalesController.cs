@@ -4,7 +4,6 @@ using POS.Backend.Features.Sales;
 
 namespace POS.Backend.Features.Sales
 {
-    [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
     [ApiController]
     [Route("api/[controller]")]
     public class SalesController : ControllerBase
@@ -24,6 +23,7 @@ namespace POS.Backend.Features.Sales
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAllOrders()
         {
             var result = await _salesServices.GetAllOrdersAsync();
@@ -31,6 +31,7 @@ namespace POS.Backend.Features.Sales
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetOrder(Guid id)
         {
             var result = await _salesServices.GetOrderByIdAsync(id);

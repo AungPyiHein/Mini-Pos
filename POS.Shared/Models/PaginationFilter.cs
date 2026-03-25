@@ -1,4 +1,4 @@
-namespace POS.Backend.Common
+namespace POS.Shared.Models
 {
     public class PaginationFilter
     {

@@ -35,11 +35,7 @@ namespace POS.Backend.Common
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-            var response = new
-            {
-                error = "An unexpected error occurred.",
-                details = exception.Message // Keep for easier debugging during dev
-            };
+            var response = Result.Failure("An unexpected error occurred. " + exception.Message);
 
             return context.Response.WriteAsync(JsonSerializer.Serialize(response));
         }
