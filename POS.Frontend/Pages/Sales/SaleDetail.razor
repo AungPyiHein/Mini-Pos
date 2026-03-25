@@ -1,0 +1,82 @@
+@page "/sales/{Id}"
+@layout MainLayout
+
+<div class="max-w-2xl space-y-5">
+
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Sale #@Id</h2>
+            <p class="page-subtitle">Transaction details & receipt</p>
+        </div>
+        <div class="flex gap-2">
+            <button class="btn-secondary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                Print
+            </button>
+            <a href="sales" class="btn-ghost">← Back</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <p class="text-sm font-semibold text-gray-900">Receipt</p>
+            <span class="badge badge-success">Completed</span>
+        </div>
+        <div class="card-body space-y-4">
+
+            <!-- Meta -->
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="text-xs text-muted font-medium mb-1">Customer</p>
+                    <p class="font-medium">Alice Johnson</p>
+                </div>
+                <div>
+                    <p class="text-xs text-muted font-medium mb-1">Branch</p>
+                    <p class="font-medium">Main Branch</p>
+                </div>
+                <div>
+                    <p class="text-xs text-muted font-medium mb-1">Date & Time</p>
+                    <p class="font-medium">25 Mar 2026, 14:32</p>
+                </div>
+                <div>
+                    <p class="text-xs text-muted font-medium mb-1">Cashier</p>
+                    <p class="font-medium">Admin User</p>
+                </div>
+            </div>
+
+            <hr class="border-border" />
+
+            <!-- Line items -->
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th class="text-right">Qty</th>
+                        <th class="text-right">Unit Price</th>
+                        <th class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Espresso</td><td class="text-right">2</td><td class="text-right">$3.50</td><td class="text-right font-medium">$7.00</td></tr>
+                    <tr><td>Margherita Pizza</td><td class="text-right">1</td><td class="text-right">$16.00</td><td class="text-right font-medium">$16.00</td></tr>
+                    <tr><td>Caesar Salad</td><td class="text-right">1</td><td class="text-right">$12.00</td><td class="text-right font-medium">$12.00</td></tr>
+                </tbody>
+            </table>
+
+            <hr class="border-border" />
+
+            <!-- Totals -->
+            <div class="space-y-1 text-sm">
+                <div class="flex justify-between text-muted"><span>Subtotal</span><span>$35.00</span></div>
+                <div class="flex justify-between text-muted"><span>Tax (5%)</span><span>$1.75</span></div>
+                <div class="flex justify-between font-bold text-gray-900 text-base pt-1"><span>Total</span><span>$36.75</span></div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+}

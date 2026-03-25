@@ -1,0 +1,80 @@
+@page "/merchants"
+@layout MainLayout
+
+<div class="space-y-5">
+
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Merchants</h2>
+            <p class="page-subtitle">Super Admin view of all businesses</p>
+        </div>
+        <button class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Register Merchant
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Merchant Name</th>
+                        <th>Contact Email</th>
+                        <th>Branches</th>
+                        <th>Subscription</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in MerchantList)
+                    {
+                        <tr>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                                        <span class="text-gray-700 font-bold text-xs">@m.Name[0]</span>
+                                    </div>
+                                    <span class="font-medium text-gray-800">@m.Name</span>
+                                </div>
+                            </td>
+                            <td class="text-muted">@m.Email</td>
+                            <td>@m.BranchCount</td>
+                            <td>
+                                @if (m.Plan == "Pro")
+                                { <span class="badge bg-indigo-100 text-indigo-700">Pro</span> }
+                                else
+                                { <span class="badge badge-info">Basic</span> }
+                            </td>
+                            <td>
+                                @if (m.Active)
+                                { <span class="badge badge-success">Active</span> }
+                                else
+                                { <span class="badge badge-warning">Suspended</span> }
+                            </td>
+                            <td>
+                                <div class="flex gap-1">
+                                    <button class="btn-ghost py-1 px-2 text-xs">Manage</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    record MerchantRow(string Name, string Email, int BranchCount, string Plan, bool Active);
+
+    List<MerchantRow> MerchantList = new()
+    {
+        new("Coffee Corp", "admin@coffeecorp.com", 3, "Pro", true),
+        new("Foodies LLC", "owner@foodies.com", 2, "Pro", true),
+        new("Quick Mart",  "hello@quickmart.com", 1, "Basic", true),
+        new("Test Store",  "test@store.com", 0, "Basic", false),
+    };
+}

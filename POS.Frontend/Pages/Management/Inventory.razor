@@ -1,0 +1,109 @@
+@page "/inventory"
+@layout MainLayout
+
+<div class="space-y-5">
+
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Inventory</h2>
+            <p class="page-subtitle">Stock levels across all branches</p>
+        </div>
+        <button class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Adjust Stock
+        </button>
+    </div>
+
+    <!-- Branch selector -->
+    <div class="flex gap-2 flex-wrap">
+        @foreach (var b in Branches)
+        {
+            <button class="px-3 py-1.5 rounded-full text-xs font-medium transition-all @(SelectedBranch == b ? "bg-accent text-white" : "bg-white border border-border text-muted hover:border-accent hover:text-accent")"
+                    @onclick="() => SelectedBranch = b">
+                @b
+            </button>
+        }
+    </div>
+
+    <!-- Low stock alert -->
+    <div class="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm">
+        <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        <span class="text-amber-800 font-medium">3 items are running low or out of stock in @SelectedBranch</span>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <input type="text" placeholder="Search products…" class="form-input max-w-xs" />
+            <span class="text-xs text-muted">Branch: <strong>@SelectedBranch</strong></span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th>Unit Cost</th>
+                        <th>Quantity</th>
+                        <th>Min. Level</th>
+                        <th>Status</th>
+                        <th>Last Adjusted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in InventoryItems)
+                    {
+                        <tr>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg">@item.Icon</span>
+                                    <span class="font-medium text-gray-800">@item.Name</span>
+                                </div>
+                            </td>
+                            <td><span class="badge badge-info">@item.Category</span></td>
+                            <td>$@item.UnitCost</td>
+                            <td class="font-semibold">@item.Qty</td>
+                            <td class="text-muted">@item.MinLevel</td>
+                            <td>
+                                @if (item.Qty == 0)
+                                { <span class="badge badge-danger">Out of Stock</span> }
+                                else if (item.Qty <= item.MinLevel)
+                                { <span class="badge badge-warning">Low Stock</span> }
+                                else
+                                { <span class="badge badge-success">OK</span> }
+                            </td>
+                            <td class="text-muted text-xs">@item.LastAdjusted</td>
+                            <td>
+                                <button class="btn-ghost py-1 px-2 text-xs">Adjust</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    string SelectedBranch = "Main Branch";
+    List<string> Branches = new() { "Main Branch", "North Branch", "South Branch" };
+
+    record InventoryItem(string Icon, string Name, string Category, string UnitCost, int Qty, int MinLevel, string LastAdjusted);
+
+    List<InventoryItem> InventoryItems = new()
+    {
+        new("☕", "Espresso",         "Beverages", "1.20",  45, 10, "23 Mar 2026"),
+        new("🥛", "Latte",            "Beverages", "1.80",  30, 10, "23 Mar 2026"),
+        new("🧃", "Orange Juice",     "Beverages", "0.80",  60, 15, "22 Mar 2026"),
+        new("🍵", "Green Tea",        "Beverages", "0.50",   8, 10, "20 Mar 2026"),
+        new("🍕", "Margherita Pizza", "Food",      "6.00",  15, 10, "24 Mar 2026"),
+        new("🥗", "Caesar Salad",     "Food",      "4.50",  20, 10, "24 Mar 2026"),
+        new("🍔", "Cheeseburger",     "Food",      "5.00",   5, 10, "21 Mar 2026"),
+        new("🥐", "Croissant",        "Bakery",    "1.00",  25, 10, "25 Mar 2026"),
+        new("🍰", "Chocolate Cake",   "Bakery",    "2.50",  12, 10, "22 Mar 2026"),
+        new("🧁", "Muffin",           "Bakery",    "0.90",   0,  5, "18 Mar 2026"),
+        new("🍟", "Chips",            "Snacks",    "0.60",  80, 20, "25 Mar 2026"),
+        new("🥜", "Nuts Mix",         "Snacks",    "1.50",   3, 10, "20 Mar 2026"),
+    };
+}

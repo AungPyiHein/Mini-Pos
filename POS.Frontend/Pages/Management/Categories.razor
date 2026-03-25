@@ -1,0 +1,76 @@
+@page "/categories"
+@layout MainLayout
+
+<div class="space-y-5">
+
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Categories</h2>
+            <p class="page-subtitle">Organize your product categories</p>
+        </div>
+        <button class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Add Category
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Category Name</th>
+                        <th>Description</th>
+                        <th>Products</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in CategoryList)
+                    {
+                        <tr>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-sm">@c.Icon</div>
+                                    <span class="font-medium text-gray-800">@c.Name</span>
+                                </div>
+                            </td>
+                            <td class="text-muted">@c.Description</td>
+                            <td>@c.ProductCount products</td>
+                            <td>
+                                @if (c.Active)
+                                { <span class="badge badge-success">Active</span> }
+                                else
+                                { <span class="badge badge-warning">Archived</span> }
+                            </td>
+                            <td>
+                                <div class="flex gap-1">
+                                    <button class="btn-ghost py-1 px-2 text-xs">Edit</button>
+                                    @if (c.Active)
+                                    { <button class="btn-ghost py-1 px-2 text-xs text-red-500">Archive</button> }
+                                    else
+                                    { <button class="btn-ghost py-1 px-2 text-xs text-emerald-600">Restore</button> }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    record CategoryRow(string Icon, string Name, string Description, int ProductCount, bool Active);
+
+    List<CategoryRow> CategoryList = new()
+    {
+        new("☕", "Beverages", "Hot and cold drinks",          4, true),
+        new("🍕", "Food",      "Main course items",            4, true),
+        new("🥐", "Bakery",    "Fresh baked goods",           3, true),
+        new("🍟", "Snacks",    "Light bites and snacks",      2, true),
+        new("🧊", "Frozen",    "Frozen and chilled products", 0, false),
+    };
+}

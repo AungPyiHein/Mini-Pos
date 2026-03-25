@@ -1,0 +1,93 @@
+@page "/sales"
+@layout MainLayout
+
+<div class="space-y-5">
+
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Sales History</h2>
+            <p class="page-subtitle">All recorded transactions</p>
+        </div>
+        <a href="sales/terminal" class="btn-primary">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            New Sale
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card">
+        <div class="card-body">
+            <div class="flex flex-wrap gap-3 items-center">
+                <input type="text" placeholder="Search invoice or customer…" class="form-input max-w-xs" />
+                <input type="date" class="form-input w-40" />
+                <input type="date" class="form-input w-40" />
+                <button class="btn-primary">Filter</button>
+                <button class="btn-secondary">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Customer</th>
+                        <th>Branch</th>
+                        <th>Items</th>
+                        <th>Date & Time</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Sales)
+                    {
+                        <tr>
+                            <td><span class="font-medium text-accent">#@s.Id</span></td>
+                            <td>@s.Customer</td>
+                            <td><span class="badge badge-info">@s.Branch</span></td>
+                            <td>@s.Items</td>
+                            <td class="text-muted text-xs">@s.DateTime</td>
+                            <td class="font-semibold">$@s.Total</td>
+                            <td><span class="badge @s.BadgeClass">@s.Status</span></td>
+                            <td>
+                                <a href="sales/@s.Id" class="btn-ghost py-1 px-2 text-xs">View</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <!-- Pagination -->
+        <div class="px-5 py-3 border-t border-border flex items-center justify-between">
+            <p class="text-xs text-muted">Showing 1–10 of 1,284 results</p>
+            <div class="flex gap-1">
+                <button class="btn-secondary py-1 px-3 text-xs">← Prev</button>
+                <button class="btn-primary py-1 px-3 text-xs">Next →</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    record SaleRow(string Id, string Customer, string Branch, int Items, string DateTime, string Total, string Status, string BadgeClass);
+
+    List<SaleRow> Sales = new()
+    {
+        new("10284", "Alice Johnson",  "Main Branch",   3, "25 Mar 2026, 14:32", "87.50",  "Completed", "badge badge-success"),
+        new("10283", "Bob Smith",      "Main Branch",   1, "25 Mar 2026, 12:10", "12.00",  "Completed", "badge badge-success"),
+        new("10282", "Carol White",    "North Branch",  5, "24 Mar 2026, 18:45", "214.00", "Completed", "badge badge-success"),
+        new("10281", "David Lee",      "Main Branch",   2, "24 Mar 2026, 11:20", "45.00",  "Refunded",  "badge badge-warning"),
+        new("10280", "Eve Martinez",   "South Branch",  4, "23 Mar 2026, 16:05", "130.75", "Completed", "badge badge-success"),
+        new("10279", "Frank Wilson",   "North Branch",  2, "23 Mar 2026, 10:33", "58.00",  "Completed", "badge badge-success"),
+        new("10278", "Grace Kim",      "Main Branch",   6, "22 Mar 2026, 19:12", "320.00", "Completed", "badge badge-success"),
+        new("10277", "Henry Brown",    "South Branch",  1, "22 Mar 2026, 09:55", "22.50",  "Cancelled", "badge badge-danger"),
+        new("10276", "Isla Clark",     "Main Branch",   3, "21 Mar 2026, 15:40", "97.00",  "Completed", "badge badge-success"),
+        new("10275", "Jack Turner",    "North Branch",  2, "21 Mar 2026, 13:22", "64.50",  "Completed", "badge badge-success"),
+    };
+}
