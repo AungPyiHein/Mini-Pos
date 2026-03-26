@@ -5,6 +5,7 @@ public class OrderResponseDto
     public Guid Id { get; set; }
     public DateTime OrderDate { get; set; }
     public decimal TotalAmount { get; set; }
+    public Guid? CustomerId { get; set; }
     public string CustomerName { get; set; } = "Walk-in Customer";
     public string Status { get; set; } = "Completed";
     public List<OrderItemResponseDto> Items { get; set; } = new();

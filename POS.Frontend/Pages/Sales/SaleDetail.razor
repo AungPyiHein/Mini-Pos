@@ -86,8 +86,8 @@
                             <tr>
                                 <td>@item.ProductName</td>
                                 <td class="text-right">@item.Quantity</td>
-                                <td class="text-right">$@item.UnitPrice.ToString("0.00")</td>
-                                <td class="text-right font-medium">$@item.SubTotal.ToString("0.00")</td>
+                                <td class="text-right">@item.UnitPrice.ToString("N0") MMK</td>
+                                <td class="text-right font-medium">@item.SubTotal.ToString("N0") MMK</td>
                             </tr>
                         }
                     </tbody>
@@ -99,7 +99,7 @@
                 <div class="space-y-1 text-sm">
                     <div class="flex justify-between font-bold text-gray-900 dark:text-gray-100 text-base pt-1">
                         <span>Total</span>
-                        <span>$@_sale.TotalAmount.ToString("0.00")</span>
+                        <span>@_sale.TotalAmount.ToString("N0") MMK</span>
                     </div>
                 </div>
 

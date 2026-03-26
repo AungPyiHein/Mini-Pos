@@ -89,7 +89,7 @@
                                 <td><span class="badge badge-info">Main Branch</span></td>
                                 <td>@s.Items.Sum(i => i.Quantity)</td>
                                 <td class="text-muted text-xs">@s.OrderDate.ToString("dd MMM yyyy, HH:mm")</td>
-                                <td class="font-semibold">$@s.TotalAmount.ToString("0.00")</td>
+                                <td class="font-semibold">@s.TotalAmount.ToString("N0") MMK</td>
                                 <td><span class="badge badge-success">@s.Status</span></td>
                                 <td>
                                     <a href="sales/@s.Id" class="btn-ghost py-1 px-2 text-xs">View</a>

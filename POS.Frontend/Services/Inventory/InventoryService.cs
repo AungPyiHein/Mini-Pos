@@ -4,6 +4,11 @@ using POS.Frontend.Models.Inventory;
 
 namespace POS.Frontend.Services.Inventory;
 
+public interface IInventoryService
+{
+    Task<ApiResponse<IEnumerable<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId);
+    Task<ApiResponse<bool>> AdjustStockAsync(UpdateStockRequest request);
+}
 public class InventoryService : IInventoryService
 {
     private readonly HttpClient _http;
