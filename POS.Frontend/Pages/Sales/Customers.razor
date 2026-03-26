@@ -105,6 +105,16 @@
                 </tbody>
             </table>
         </div>
+        @if (!IsLoading && TotalRecords > 0)
+        {
+            <div class="mt-6 border-t border-gray-100 dark:border-gray-800 pt-6">
+                <Pagination CurrentPage="CurrentPage"
+                            TotalPages="TotalPages"
+                            TotalRecords="TotalRecords"
+                            PageSize="PageSize"
+                            OnPageChanged="HandlePageChanged" />
+            </div>
+        }
     </div>
 
 </div>
@@ -159,6 +169,11 @@
     private string ErrorMessage = "";
     private string SearchTerm = "";
     private int TotalRecords = 0;
+    
+    // Pagination
+    private int CurrentPage = 1;
+    private int TotalPages = 1;
+    private int PageSize = 10;
 
     // TODO: Get this from Auth state
     private Guid MerchantId = Guid.Empty; 
@@ -168,10 +183,10 @@
         IsLoading = true;
         try
         {
-            var merchantsResponse = await MerchantService.GetAllMerchantsAsync();
-            if (merchantsResponse.IsSuccess && merchantsResponse.Data != null && merchantsResponse.Data.Any())
+            var merchantsResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 1 });
+            if (merchantsResponse.IsSuccess && merchantsResponse.Data?.Data != null && merchantsResponse.Data.Data.Any())
             {
-                MerchantId = merchantsResponse.Data.First().Id;
+                MerchantId = merchantsResponse.Data.Data.First().Id;
                 await LoadCustomers();
             }
             else
@@ -187,15 +202,21 @@
         }
     }
 
+    private async Task HandlePageChanged(int newPage)
+    {
+        CurrentPage = newPage;
+        await LoadCustomers();
+    }
+
     private async Task LoadCustomers()
     {
         IsLoading = true;
         ErrorMessage = "";
         try
         {
-            var filter = new PaginationFilter { PageNumber = 1, PageSize = 100, SearchTerm = SearchTerm };
+            var filter = new PaginationFilter { PageNumber = CurrentPage, PageSize = PageSize, SearchTerm = SearchTerm };
             
-            var ordersTask = SaleService.GetAllOrdersAsync();
+            var ordersTask = SaleService.GetAllOrdersAsync(new PaginationFilter { PageSize = 1000 });
             var customersTask = CustomerService.GetCustomersAsync(MerchantId, filter);
             await Task.WhenAll(ordersTask, customersTask);
             
@@ -204,13 +225,14 @@
             
             if (ordersRes?.IsSuccess == true && ordersRes.Data != null)
             {
-                OrderList = ordersRes.Data.ToList();
+                OrderList = ordersRes.Data.Data.ToList();
             }
 
             if (response.IsSuccess && response.Data != null)
             {
                 CustomerList = response.Data.Data.ToList();
                 TotalRecords = response.Data.TotalRecords;
+                TotalPages = response.Data.TotalPages;
             }
             else
             {
@@ -229,7 +251,7 @@
 
     private void HandleSearch()
     {
-        // Simple debounce could be added here
+        CurrentPage = 1;
         _ = LoadCustomers();
     }
 

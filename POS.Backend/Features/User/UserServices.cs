@@ -38,7 +38,7 @@ namespace POS.Backend.Features.User
     {
         Task<Result<Guid>> CreateUserAsync(CreateUserRequest request);
         Task<Result<UserResponseDto>> GetUserByIdAsync(Guid id);
-        Task<Result<IEnumerable<UserResponseDto>>> GetAllUsersAsync();
+        Task<Result<PagedResponse<UserResponseDto>>> GetAllUsersAsync(PaginationFilter filter);
         Task<Result<bool>> UpdateUserAsync(Guid id, UpdateUserRequest request);
         Task<Result<bool>> DeleteUserAsync(Guid id);
     }
@@ -97,11 +97,24 @@ namespace POS.Backend.Features.User
             });
         }
 
-        public async Task<Result<IEnumerable<UserResponseDto>>> GetAllUsersAsync()
+        public async Task<Result<PagedResponse<UserResponseDto>>> GetAllUsersAsync(PaginationFilter filter)
         {
-            var users = await _context.Users
+            var query = _context.Users
                 .AsNoTracking()
                 .Where(u => u.DeletedAt == null)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                query = query.Where(u => EF.Functions.Like(u.Username, $"%{filter.SearchTerm}%") || 
+                                         EF.Functions.Like(u.Email, $"%{filter.SearchTerm}%"));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var users = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
                 .Select(u => new UserResponseDto
                 {
                     Id = u.Id,
@@ -114,7 +127,8 @@ namespace POS.Backend.Features.User
                 })
                 .ToListAsync();
 
-            return Result<IEnumerable<UserResponseDto>>.Success(users);
+            var pagedResponse = new PagedResponse<UserResponseDto>(users, totalRecords, filter.PageNumber, filter.PageSize);
+            return Result<PagedResponse<UserResponseDto>>.Success(pagedResponse);
         }
 
         public async Task<Result<bool>> UpdateUserAsync(Guid id, UpdateUserRequest request)

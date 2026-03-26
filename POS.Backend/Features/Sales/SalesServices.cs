@@ -44,7 +44,7 @@ namespace POS.Backend.Features.Sales
     {
         Task<Result<Guid>> CreateOrderAsync(CreateOrderRequest request);
         Task<Result<OrderResponseDto>> GetOrderByIdAsync(Guid id);
-        Task<Result<IEnumerable<OrderResponseDto>>> GetAllOrdersAsync();
+        Task<Result<PagedResponse<OrderResponseDto>>> GetAllOrdersAsync(PaginationFilter filter);
     }
 
     public class SalesServices : ISalesServices
@@ -146,14 +146,27 @@ namespace POS.Backend.Features.Sales
             return Result<OrderResponseDto>.Success(order);
         }
 
-        public async Task<Result<IEnumerable<OrderResponseDto>>> GetAllOrdersAsync()
+        public async Task<Result<PagedResponse<OrderResponseDto>>> GetAllOrdersAsync(PaginationFilter filter)
         {
-            var orders = await _context.Orders
+            var query = _context.Orders
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
                 .Include(o => o.Customer)
                 .Where(o => o.DeletedAt == null)
                 .OrderByDescending(o => o.OrderDate)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                query = query.Where(o => (o.Customer != null && EF.Functions.Like(o.Customer.Name, $"%{filter.SearchTerm}%")) || 
+                                         EF.Functions.Like(o.Id.ToString(), $"%{filter.SearchTerm}%"));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var orders = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
                 .Select(o => new OrderResponseDto
                 {
                     Id = o.Id,
@@ -173,7 +186,8 @@ namespace POS.Backend.Features.Sales
                 })
                 .ToListAsync();
 
-            return Result<IEnumerable<OrderResponseDto>>.Success(orders);
+            var pagedResponse = new PagedResponse<OrderResponseDto>(orders, totalRecords, filter.PageNumber, filter.PageSize);
+            return Result<PagedResponse<OrderResponseDto>>.Success(pagedResponse);
         }
     }
 }

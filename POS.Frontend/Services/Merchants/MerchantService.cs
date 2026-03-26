@@ -1,12 +1,13 @@
 using System.Net.Http.Json;
 using POS.Frontend.Models;
 using POS.Frontend.Models.Merchants;
+using POS.Shared.Models;
 
 namespace POS.Frontend.Services.Merchants;
 
 public interface IMerchantService
 {
-    Task<ApiResponse<IEnumerable<MerchantResponseDto>>> GetAllMerchantsAsync();
+    Task<ApiResponse<PagedResponse<MerchantResponseDto>>> GetAllMerchantsAsync(PaginationFilter filter);
     Task<ApiResponse<Guid>> CreateMerchantAsync(CreateMerchantRequest request);
     Task<ApiResponse> UpdateMerchantAsync(Guid id, UpdateMerchantRequest request);
     Task<ApiResponse> DeleteMerchantAsync(Guid id);
@@ -20,17 +21,18 @@ public class MerchantService : IMerchantService
         _http = http;
     }
 
-    public async Task<ApiResponse<IEnumerable<MerchantResponseDto>>> GetAllMerchantsAsync()
+    public async Task<ApiResponse<PagedResponse<MerchantResponseDto>>> GetAllMerchantsAsync(PaginationFilter filter)
     {
         try
         {
-            var response = await _http.GetFromJsonAsync<ApiResponse<IEnumerable<MerchantResponseDto>>>("/api/merchants");
+            var url = $"/api/merchants?pageNumber={filter.PageNumber}&pageSize={filter.PageSize}&searchTerm={Uri.EscapeDataString(filter.SearchTerm ?? "")}";
+            var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<MerchantResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;
-            return response ?? new ApiResponse<IEnumerable<MerchantResponseDto>> { IsSuccess = false, Message = "Error fetching merchants" };
+            return response ?? new ApiResponse<PagedResponse<MerchantResponseDto>> { IsSuccess = false, Message = "Error fetching merchants" };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<IEnumerable<MerchantResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+            return new ApiResponse<PagedResponse<MerchantResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
 

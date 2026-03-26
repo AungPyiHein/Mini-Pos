@@ -19,15 +19,15 @@ namespace POS.Backend.Features.Sales
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
         {
             var result = await _salesServices.CreateOrderAsync(request);
-            return result.IsSuccess ? CreatedAtAction(nameof(GetOrder), new { id = result.Value }, new { Message = "Order Created", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? CreatedAtAction(nameof(GetOrder), new { id = result.Value }, new { IsSuccess = true, Message = "Order Created", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAllOrders()
+        public async Task<IActionResult> GetAllOrders([FromQuery] PaginationFilter filter)
         {
-            var result = await _salesServices.GetAllOrdersAsync();
-            return result.IsSuccess ? Ok(new { Message = "Orders retrieved successfully", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            var result = await _salesServices.GetAllOrdersAsync(filter);
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Orders retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpGet("{id}")]
@@ -35,7 +35,7 @@ namespace POS.Backend.Features.Sales
         public async Task<IActionResult> GetOrder(Guid id)
         {
             var result = await _salesServices.GetOrderByIdAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Order retrieved successfully", Data = result.Value }) : NotFound(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Order retrieved successfully", Data = result.Value }) : NotFound(new { IsSuccess = false, Message = result.Error });
         }
     }
 }

@@ -210,10 +210,10 @@
     {
         try
         {
-            var merchantsResponse = await MerchantService.GetAllMerchantsAsync();
-            if (merchantsResponse?.Data != null && merchantsResponse.Data.Any())
+            var merchantsResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 100 });
+            if (merchantsResponse?.Data?.Data != null && merchantsResponse.Data.Data.Any())
             {
-                var merchantId = merchantsResponse.Data.First().Id;
+                var merchantId = merchantsResponse.Data.Data.First().Id;
                 var filter = new PaginationFilter { PageNumber = 1, PageSize = 100 };
                 var response = await CustomerService.GetCustomersAsync(merchantId, filter);
                 if (response?.Data?.Data != null)
@@ -230,10 +230,10 @@
 
     private async Task LoadBranches()
     {
-        var response = await BranchService.GetAllBranchesAsync();
-        if (response?.Data != null)
+        var response = await BranchService.GetAllBranchesAsync(new PaginationFilter { PageSize = 100 });
+        if (response?.Data?.Data != null)
         {
-            BranchList = response.Data.ToList();
+            BranchList = response.Data.Data.ToList();
             if (BranchList.Any())
             {
                 selectedBranchId = BranchList.First().Id;

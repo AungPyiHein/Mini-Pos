@@ -21,35 +21,35 @@ namespace POS.Backend.Features.Customers
         public async Task<IActionResult> GetCustomers(Guid merchantId, [FromQuery] PaginationFilter filter)
         {
             var result = await _customerServices.GetCustomersAsync(merchantId, filter);
-            return result.IsSuccess ? Ok(new { Message = "Customers retrieved successfully", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Customers retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetCustomer(Guid id)
         {
             var result = await _customerServices.GetCustomerByIdAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Customer retrieved successfully", Data = result.Value }) : NotFound(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Customer retrieved successfully", Data = result.Value }) : NotFound(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateCustomer([FromBody] CreateCustomerRequest request)
         {
             var result = await _customerServices.CreateCustomerAsync(request);
-            return result.IsSuccess ? CreatedAtAction(nameof(GetCustomer), new { id = result.Value }, new { Message = "Customer Created", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? CreatedAtAction(nameof(GetCustomer), new { id = result.Value }, new { IsSuccess = true, Message = "Customer Created", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCustomer(Guid id, [FromBody] CreateCustomerRequest request)
         {
             var result = await _customerServices.UpdateCustomerAsync(id, request);
-            return result.IsSuccess ? Ok(new { Message = "Customer Updated" }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Customer Updated" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCustomer(Guid id)
         {
             var result = await _customerServices.DeleteCustomerAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Customer Deleted" }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Customer Deleted" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
     }
 }

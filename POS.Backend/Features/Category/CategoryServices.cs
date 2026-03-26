@@ -27,7 +27,7 @@ namespace POS.Backend.Features.Category
     }
     public class UpdateCategoryRequest
     {
-        public Guid id { get; set; }
+        public Guid Id { get; set; }
         public string? Name { get; set; }
         public string? Description { get; set; }
     }
@@ -112,7 +112,7 @@ namespace POS.Backend.Features.Category
         }
         public async Task<Result> UpdateCategoryAsync(UpdateCategoryRequest request)
         {
-            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == request.id && c.DeletedAt == null);
+            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == request.Id && c.DeletedAt == null);
             if (category == null)
                 return Result.Failure("Category not found");
             if (!string.IsNullOrEmpty(request.Name))

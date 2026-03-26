@@ -30,9 +30,9 @@ namespace POS.Backend.Features.Branch
         Task<Result> UpdateBranchAsync(UpdateBranchRequest request);
         Task<Result> DeleteBranchAsync(Guid id);
         Task<Result> RestoreBranchAsync(Guid id);
-        Task<Result<IEnumerable<BranchResponse>>> GetBranchesByMerchantIdAsync(Guid merchantId);
+        Task<Result<PagedResponse<BranchResponse>>> GetBranchesByMerchantIdAsync(Guid merchantId, PaginationFilter filter);
         Task<Result<BranchResponse>> GetBranchByIdAsync(Guid id);
-        Task<Result<IEnumerable<BranchResponse>>> GetAllBranchesAsync();
+        Task<Result<PagedResponse<BranchResponse>>> GetAllBranchesAsync(PaginationFilter filter);
     }
     public class BranchServices : IBranchServices
     {
@@ -81,10 +81,23 @@ namespace POS.Backend.Features.Branch
             await _context.SaveChangesAsync();
             return Result.Success();
         }
-        public async Task<Result<IEnumerable<BranchResponse>>> GetBranchesByMerchantIdAsync(Guid merchantId)
+        public async Task<Result<PagedResponse<BranchResponse>>> GetBranchesByMerchantIdAsync(Guid merchantId, PaginationFilter filter)
         {
-            var branches = await _context.Branches
+            var query = _context.Branches
                 .Where(b => b.MerchantId == merchantId && b.DeletedAt == null)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                query = query.Where(b => EF.Functions.Like(b.Name, $"%{filter.SearchTerm}%") || 
+                                         EF.Functions.Like(b.Address, $"%{filter.SearchTerm}%"));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var branches = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
                 .Select(b => new BranchResponse
                 {
                     Id = b.Id,
@@ -93,7 +106,9 @@ namespace POS.Backend.Features.Branch
                     ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
                 })
                 .ToListAsync();
-            return Result<IEnumerable<BranchResponse>>.Success(branches);
+
+            var pagedResponse = new PagedResponse<BranchResponse>(branches, totalRecords, filter.PageNumber, filter.PageSize);
+            return Result<PagedResponse<BranchResponse>>.Success(pagedResponse);
         }
 
         public async Task<Result<BranchResponse>> GetBranchByIdAsync(Guid id)
@@ -113,10 +128,23 @@ namespace POS.Backend.Features.Branch
             return Result<BranchResponse>.Success(branch);
         }
 
-        public async Task<Result<IEnumerable<BranchResponse>>> GetAllBranchesAsync()
+        public async Task<Result<PagedResponse<BranchResponse>>> GetAllBranchesAsync(PaginationFilter filter)
         {
-            var branches = await _context.Branches
+            var query = _context.Branches
                 .Where(b => b.DeletedAt == null)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                query = query.Where(b => EF.Functions.Like(b.Name, $"%{filter.SearchTerm}%") || 
+                                         EF.Functions.Like(b.Address, $"%{filter.SearchTerm}%"));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var branches = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
                 .Select(b => new BranchResponse
                 {
                     Id = b.Id,
@@ -125,7 +153,9 @@ namespace POS.Backend.Features.Branch
                     ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
                 })
                 .ToListAsync();
-            return Result<IEnumerable<BranchResponse>>.Success(branches);
+
+            var pagedResponse = new PagedResponse<BranchResponse>(branches, totalRecords, filter.PageNumber, filter.PageSize);
+            return Result<PagedResponse<BranchResponse>>.Success(pagedResponse);
         }
         public async Task<Result> DeleteBranchAsync(Guid id)
         {

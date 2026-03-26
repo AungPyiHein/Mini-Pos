@@ -1,12 +1,13 @@
 using System.Net.Http.Json;
 using POS.Frontend.Models;
 using POS.Frontend.Models.Sales;
+using POS.Shared.Models;
 
 namespace POS.Frontend.Services.Sales;
 
 public interface ISaleService
 {
-    Task<ApiResponse<IEnumerable<OrderResponseDto>>> GetAllOrdersAsync();
+    Task<ApiResponse<PagedResponse<OrderResponseDto>>> GetAllOrdersAsync(PaginationFilter filter);
     Task<ApiResponse<OrderResponseDto>> GetOrderByIdAsync(Guid id);
     Task<ApiResponse<Guid>> CreateOrderAsync(CreateOrderRequest request);
 }
@@ -20,17 +21,18 @@ public class SaleService : ISaleService
         _http = http;
     }
 
-    public async Task<ApiResponse<IEnumerable<OrderResponseDto>>> GetAllOrdersAsync()
+    public async Task<ApiResponse<PagedResponse<OrderResponseDto>>> GetAllOrdersAsync(PaginationFilter filter)
     {
         try
         {
-            var response = await _http.GetFromJsonAsync<ApiResponse<IEnumerable<OrderResponseDto>>>("/api/sales");
+            var url = $"/api/sales?pageNumber={filter.PageNumber}&pageSize={filter.PageSize}&searchTerm={Uri.EscapeDataString(filter.SearchTerm ?? "")}";
+            var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<OrderResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;
-            return response ?? new ApiResponse<IEnumerable<OrderResponseDto>> { IsSuccess = false, Message = "Error connecting to server", Data = new List<OrderResponseDto>() };
+            return response ?? new ApiResponse<PagedResponse<OrderResponseDto>> { IsSuccess = false, Message = "Error connecting to server" };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<IEnumerable<OrderResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}", Data = new List<OrderResponseDto>() };
+            return new ApiResponse<PagedResponse<OrderResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
 

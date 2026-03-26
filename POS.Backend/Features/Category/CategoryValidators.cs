@@ -15,7 +15,7 @@ namespace POS.Backend.Features.Category
     {
         public UpdateCategoryRequestValidator()
         {
-            RuleFor(x => x.id).NotEmpty();
+            RuleFor(x => x.Id).NotEmpty();
             RuleFor(x => x.Name).NotEmpty().MaximumLength(100).When(x => x.Name != null);
         }
     }

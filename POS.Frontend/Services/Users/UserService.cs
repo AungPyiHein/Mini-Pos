@@ -1,12 +1,13 @@
 using System.Net.Http.Json;
 using POS.Frontend.Models;
 using POS.Frontend.Models.Users;
+using POS.Shared.Models;
 
 namespace POS.Frontend.Services.Users;
 
 public interface IUserService
 {
-    Task<ApiResponse<IEnumerable<UserResponseDto>>> GetAllUsersAsync();
+    Task<ApiResponse<PagedResponse<UserResponseDto>>> GetAllUsersAsync(PaginationFilter filter);
     Task<ApiResponse<UserResponseDto>> GetUserByIdAsync(Guid id);
     Task<ApiResponse<Guid>> CreateUserAsync(CreateUserRequest request);
     Task<ApiResponse> UpdateUserAsync(Guid id, UpdateUserRequest request);
@@ -22,17 +23,18 @@ public class UserService : IUserService
         _http = http;
     }
 
-    public async Task<ApiResponse<IEnumerable<UserResponseDto>>> GetAllUsersAsync()
+    public async Task<ApiResponse<PagedResponse<UserResponseDto>>> GetAllUsersAsync(PaginationFilter filter)
     {
         try
         {
-            var response = await _http.GetFromJsonAsync<ApiResponse<IEnumerable<UserResponseDto>>>("/api/users");
+            var url = $"/api/users?pageNumber={filter.PageNumber}&pageSize={filter.PageSize}&searchTerm={Uri.EscapeDataString(filter.SearchTerm ?? "")}";
+            var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<UserResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;
-            return response ?? new ApiResponse<IEnumerable<UserResponseDto>> { IsSuccess = false, Message = "Error connecting to server", Data = Enumerable.Empty<UserResponseDto>() };
+            return response ?? new ApiResponse<PagedResponse<UserResponseDto>> { IsSuccess = false, Message = "Error connecting to server" };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<IEnumerable<UserResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}", Data = Enumerable.Empty<UserResponseDto>() };
+            return new ApiResponse<PagedResponse<UserResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
 

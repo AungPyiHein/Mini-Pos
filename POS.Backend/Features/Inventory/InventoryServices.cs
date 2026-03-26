@@ -23,7 +23,7 @@ namespace POS.Backend.Features.Inventory
 
     public interface IInventoryServices
     {
-        Task<Result<List<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId);
+        Task<Result<PagedResponse<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId, PaginationFilter filter);
         Task<Result<bool>> AdjustStockAsync(UpdateStockRequest request);
     }
 
@@ -36,11 +36,23 @@ namespace POS.Backend.Features.Inventory
             _context = context;
         }
 
-        public async Task<Result<List<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId)
+        public async Task<Result<PagedResponse<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId, PaginationFilter filter)
         {
-            var inventory = await _context.BranchInventories
+            var query = _context.BranchInventories
                 .Include(i => i.Product)
                 .Where(i => i.BranchId == branchId && i.DeletedAt == null)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                query = query.Where(i => EF.Functions.Like(i.Product.Name, $"%{filter.SearchTerm}%"));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var inventory = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
                 .Select(i => new InventoryResponseDto
                 {
                     Id = i.Id,
@@ -51,7 +63,8 @@ namespace POS.Backend.Features.Inventory
                 })
                 .ToListAsync();
 
-            return Result<List<InventoryResponseDto>>.Success(inventory);
+            var pagedResponse = new PagedResponse<InventoryResponseDto>(inventory, totalRecords, filter.PageNumber, filter.PageSize);
+            return Result<PagedResponse<InventoryResponseDto>>.Success(pagedResponse);
         }
 
         public async Task<Result<bool>> AdjustStockAsync(UpdateStockRequest request)

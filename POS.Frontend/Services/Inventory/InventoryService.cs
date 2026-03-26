@@ -1,12 +1,13 @@
 using System.Net.Http.Json;
 using POS.Frontend.Models;
 using POS.Frontend.Models.Inventory;
+using POS.Shared.Models;
 
 namespace POS.Frontend.Services.Inventory;
 
 public interface IInventoryService
 {
-    Task<ApiResponse<IEnumerable<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId);
+    Task<ApiResponse<PagedResponse<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId, PaginationFilter filter);
     Task<ApiResponse<bool>> AdjustStockAsync(UpdateStockRequest request);
 }
 public class InventoryService : IInventoryService
@@ -18,17 +19,18 @@ public class InventoryService : IInventoryService
         _http = http;
     }
 
-    public async Task<ApiResponse<IEnumerable<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId)
+    public async Task<ApiResponse<PagedResponse<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId, PaginationFilter filter)
     {
         try
         {
-            var response = await _http.GetFromJsonAsync<ApiResponse<IEnumerable<InventoryResponseDto>>>($"/api/inventory/branch/{branchId}");
+            var url = $"/api/inventory/branch/{branchId}?pageNumber={filter.PageNumber}&pageSize={filter.PageSize}&searchTerm={Uri.EscapeDataString(filter.SearchTerm ?? "")}";
+            var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<InventoryResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;
-            return response ?? new ApiResponse<IEnumerable<InventoryResponseDto>> { IsSuccess = false, Message = "Empty response from server" };
+            return response ?? new ApiResponse<PagedResponse<InventoryResponseDto>> { IsSuccess = false, Message = "Empty response from server" };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<IEnumerable<InventoryResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+            return new ApiResponse<PagedResponse<InventoryResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
 

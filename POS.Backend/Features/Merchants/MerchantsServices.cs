@@ -30,7 +30,7 @@ namespace POS.Backend.Features.Merchants
 
     public interface IMerchantsServices
     {
-        Task<Result<IEnumerable<MerchantResponseDto>>> GetAllMerchantsAsync();
+        Task<Result<PagedResponse<MerchantResponseDto>>> GetAllMerchantsAsync(PaginationFilter filter);
         Task<Result<MerchantResponseDto>> GetMerchantByIdAsync(Guid id);
         Task<Result<Guid>> CreateMerchantAsync(CreateMerchantRequest request);
         Task<Result> UpdateMerchantAsync(UpdateMerchantRequest request);
@@ -45,11 +45,24 @@ namespace POS.Backend.Features.Merchants
         {
             _context = context;
         }
-        public async Task<Result<IEnumerable<MerchantResponseDto>>> GetAllMerchantsAsync()
+        public async Task<Result<PagedResponse<MerchantResponseDto>>> GetAllMerchantsAsync(PaginationFilter filter)
         {
-            var merchants = await _context.Merchants
+            var query = _context.Merchants
                 .AsNoTracking()
                 .Where(m => m.DeletedAt == null)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                query = query.Where(m => EF.Functions.Like(m.Name, $"%{filter.SearchTerm}%") || 
+                                         EF.Functions.Like(m.ContactEmail, $"%{filter.SearchTerm}%"));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var merchants = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
                 .Select(m => new MerchantResponseDto
                 {
                     Id = m.Id,
@@ -60,7 +73,9 @@ namespace POS.Backend.Features.Merchants
                     ProductCount = m.Products.Count(p => p.DeletedAt == null)
                 })
                 .ToListAsync();
-            return Result<IEnumerable<MerchantResponseDto>>.Success(merchants);
+
+            var pagedResponse = new PagedResponse<MerchantResponseDto>(merchants, totalRecords, filter.PageNumber, filter.PageSize);
+            return Result<PagedResponse<MerchantResponseDto>>.Success(pagedResponse);
         }
         public async Task<Result<Guid>> CreateMerchantAsync(CreateMerchantRequest request)
         {

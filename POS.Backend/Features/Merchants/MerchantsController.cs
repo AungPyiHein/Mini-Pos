@@ -15,44 +15,44 @@ namespace POS.Backend.Features.Merchants
             _merchantsServices = merchantsServices;
         }
         [HttpGet]
-        public async Task<IActionResult> GetAllMerchants()
+        public async Task<IActionResult> GetAllMerchants([FromQuery] PaginationFilter filter)
         {
-            var result = await _merchantsServices.GetAllMerchantsAsync();
-            return result.IsSuccess ? Ok(new { Message = "Merchants retrieved successfully", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            var result = await _merchantsServices.GetAllMerchantsAsync(filter);
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Merchants retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpGet("{id}")]
         public async Task<IActionResult> GetMerchantById(Guid id)
         {
             var result = await _merchantsServices.GetMerchantByIdAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Merchant retrieved successfully", Data = result.Value }) : NotFound(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Merchant retrieved successfully", Data = result.Value }) : NotFound(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPost]
         public async Task<IActionResult> CreateMerchant(CreateMerchantRequest request)
         {
             var result = await _merchantsServices.CreateMerchantAsync(request);
-            return result.IsSuccess ? Ok(new { Message = "Merchant Created", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Merchant Created", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateMerchant(Guid id, UpdateMerchantRequest request)
         {
             if (id != request.Id)
             {
-                return BadRequest(new { Message = "ID mismatch" });
+                return BadRequest(new { IsSuccess = false, Message = "ID mismatch" });
             }
             var result = await _merchantsServices.UpdateMerchantAsync(request);
-            return result.IsSuccess ? Ok(new { Message = "Merchant Updated" }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Merchant Updated" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMerchant(Guid id)
         {
             var result = await _merchantsServices.DeleteMerchantAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Merchant Deleted" }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Merchant Deleted" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPatch("{id}/restore")]
         public async Task<IActionResult> RestoreMerchant(Guid id)
         {
             var result = await _merchantsServices.RestoreMerchantAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Merchant Restored" }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Merchant Restored" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
     }
 }

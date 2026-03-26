@@ -85,7 +85,7 @@ public class CategoryService : ICategoryService
     {
         try
         {
-            var response = await _http.PutAsJsonAsync($"/api/categories", request);
+            var response = await _http.PutAsJsonAsync($"/api/categories/{request.Id}", request);
             var result = await response.Content.ReadFromJsonAsync<ApiResponse<bool>>();
             if (result != null) result.IsSuccess = response.IsSuccessStatusCode;
             return result ?? new ApiResponse<bool> { IsSuccess = false, Message = "Error connecting to server" };

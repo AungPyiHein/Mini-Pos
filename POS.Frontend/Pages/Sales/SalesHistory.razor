@@ -22,7 +22,12 @@
     <div class="card">
         <div class="card-body">
             <div class="flex flex-wrap gap-3 items-center">
-                <input type="text" placeholder="Search invoice or customer…" class="form-input max-w-xs" />
+                <input type="text" 
+                       placeholder="Search invoice or customer…" 
+                       class="form-input max-w-xs" 
+                       @bind-value="_searchTerm"
+                       @bind-value:event="oninput"
+                       @onkeyup="HandleSearch" />
                 <input type="date" class="form-input w-40" />
                 <input type="date" class="form-input w-40" />
                 <button class="btn-primary">Filter</button>
@@ -32,7 +37,6 @@
     </div>
 
     <!-- Table -->
-    <div class="card">
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead>
@@ -100,26 +104,49 @@
                 </tbody>
             </table>
         </div>
-        <!-- Pagination -->
-        <div class="px-5 py-3 border-t border-border flex items-center justify-between">
-            <p class="text-xs text-muted">Showing results</p>
-            <div class="flex gap-1">
-                <button class="btn-secondary py-1 px-3 text-xs" disabled>← Prev</button>
-                <button class="btn-primary py-1 px-3 text-xs" disabled>Next →</button>
+        @if (!_isLoading && _totalRecords > 0)
+        {
+            <div class="border-t border-gray-100 dark:border-gray-800/50">
+                <Pagination CurrentPage="_currentPage"
+                            TotalPages="_totalPages"
+                            TotalRecords="_totalRecords"
+                            PageSize="_pageSize"
+                            OnPageChanged="HandlePageChanged" />
             </div>
-        </div>
+        }
     </div>
-
-</div>
 
 @code {
     private List<OrderResponseDto> Sales = new();
     private bool _isLoading = true;
     private string? _errorMessage;
 
+    // Pagination
+    private int _currentPage = 1;
+    private int _totalPages = 1;
+    private int _totalRecords = 0;
+    private int _pageSize = 10;
+
+    private string _searchTerm = "";
+
     protected override async Task OnInitializedAsync()
     {
         await LoadSales();
+    }
+
+    private async Task HandlePageChanged(int newPage)
+    {
+        _currentPage = newPage;
+        await LoadSales();
+    }
+
+    private async Task HandleSearch(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || string.IsNullOrEmpty(e.Key)) // Trigger search on Enter or when input changes (oninput event)
+        {
+            _currentPage = 1;
+            await LoadSales();
+        }
     }
 
     private async Task LoadSales()
@@ -127,10 +154,18 @@
         _isLoading = true;
         _errorMessage = null;
 
-        var response = await SaleService.GetAllOrdersAsync();
+        var filter = new PaginationFilter
+        {
+            PageNumber = _currentPage,
+            PageSize = _pageSize,
+            SearchTerm = _searchTerm
+        };
+        var response = await SaleService.GetAllOrdersAsync(filter);
         if (response?.Data != null)
         {
-            Sales = response.Data.ToList();
+            Sales = response.Data.Data.ToList();
+            _totalPages = response.Data.TotalPages;
+            _totalRecords = response.Data.TotalRecords;
         }
         else
         {

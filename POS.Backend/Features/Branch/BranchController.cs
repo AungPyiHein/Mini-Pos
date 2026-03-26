@@ -18,28 +18,28 @@ namespace POS.Backend.Features.Branch
         public async Task<IActionResult> CreateBranch(CreateBranchRequest request)
         {
             var result = await _branchServices.CreateBranchAsync(request);
-            return result.IsSuccess ? Ok(new { Message = "Branch Created", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branch Created", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllBranches()
+        public async Task<IActionResult> GetAllBranches([FromQuery] PaginationFilter filter)
         {
-            var result = await _branchServices.GetAllBranchesAsync();
-            return result.IsSuccess ? Ok(new { Message = "Branches retrieved successfully", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            var result = await _branchServices.GetAllBranchesAsync(filter);
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branches retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetBranchById(Guid id)
         {
             var result = await _branchServices.GetBranchByIdAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Branch retrieved successfully", Data = result.Value }) : NotFound(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branch retrieved successfully", Data = result.Value }) : NotFound(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpGet("merchant/{merchantId}")]
-        public async Task<IActionResult> GetBranchesByMerchantId(Guid merchantId)
+        public async Task<IActionResult> GetBranchesByMerchantId(Guid merchantId, [FromQuery] PaginationFilter filter)
         {
-            var result = await _branchServices.GetBranchesByMerchantIdAsync(merchantId);
-            return result.IsSuccess ? Ok(new { Message = "Branches retrieved successfully", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            var result = await _branchServices.GetBranchesByMerchantIdAsync(merchantId, filter);
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branches retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpPut("{id}")]
@@ -47,24 +47,24 @@ namespace POS.Backend.Features.Branch
         {
             if (id != request.Id)
             {
-                return BadRequest(new { Message = "ID mismatch" });
+                return BadRequest(new { IsSuccess = false, Message = "ID mismatch" });
             }
             var result = await _branchServices.UpdateBranchAsync(request);
-            return result.IsSuccess ? Ok(new { Message = "Branch Updated" }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branch Updated" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBranch(Guid id)
         {
             var result = await _branchServices.DeleteBranchAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Branch Deleted" }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branch Deleted" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpPatch("{id}/restore")]
         public async Task<IActionResult> RestoreBranch(Guid id)
         {
             var result = await _branchServices.RestoreBranchAsync(id);
-            return result.IsSuccess ? Ok(new { Message = "Branch Restored" }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branch Restored" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
     }
 }

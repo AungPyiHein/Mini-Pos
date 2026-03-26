@@ -93,6 +93,16 @@
                 </tbody>
             </table>
         </div>
+        @if (!_isLoading && _totalRecords > 0)
+        {
+            <div class="mt-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+                <Pagination CurrentPage="_currentPage"
+                            TotalPages="_totalPages"
+                            TotalRecords="_totalRecords"
+                            PageSize="_pageSize"
+                            OnPageChanged="HandlePageChanged" />
+            </div>
+        }
     </div>
 
     @if (showModal)
@@ -153,6 +163,12 @@
     private bool _isSaving = false;
     private CategoryFormModel formModel = new();
 
+    // Pagination
+    private int _currentPage = 1;
+    private int _totalPages = 1;
+    private int _totalRecords = 0;
+    private int _pageSize = 10;
+
     private class CategoryFormModel
     {
         public Guid Id { get; set; }
@@ -174,11 +190,17 @@
 
     private async Task LoadMerchants()
     {
-        var response = await MerchantService.GetAllMerchantsAsync();
-        if (response?.Data != null)
+        var response = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 100 });
+        if (response?.Data?.Data != null)
         {
-            MerchantList = response.Data.ToList();
+            MerchantList = response.Data.Data.ToList();
         }
+    }
+
+    private async Task HandlePageChanged(int newPage)
+    {
+        _currentPage = newPage;
+        await LoadCategories();
     }
 
     private async Task LoadCategories()
@@ -186,11 +208,13 @@
         _isLoading = true;
         _errorMessage = null;
 
-        var filter = new PaginationFilter { PageNumber = 1, PageSize = 100 };
+        var filter = new PaginationFilter { PageNumber = _currentPage, PageSize = _pageSize };
         var response = await CategoryService.GetCategoriesAsync(filter);
-        if (response?.IsSuccess == true && response.Data?.Data != null)
+        if (response?.IsSuccess == true && response.Data != null)
         {
             CategoryList = response.Data.Data.ToList();
+            _totalPages = response.Data.TotalPages;
+            _totalRecords = response.Data.TotalRecords;
         }
         else
         {
@@ -237,7 +261,7 @@
         {
             var request = new UpdateCategoryRequest
             {
-                id = formModel.Id,
+                Id = formModel.Id,
                 Name = formModel.Name,
                 Description = formModel.Description
             };

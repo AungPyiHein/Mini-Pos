@@ -97,6 +97,16 @@
                 </tbody>
             </table>
         </div>
+        @if (!IsLoading && TotalRecords > 0)
+        {
+            <div class="mt-6 border-t border-gray-100 dark:border-gray-800 pt-6">
+                <Pagination CurrentPage="CurrentPage"
+                            TotalPages="TotalPages"
+                            TotalRecords="TotalRecords"
+                            PageSize="PageSize"
+                            OnPageChanged="HandlePageChanged" />
+            </div>
+        }
     </div>
 
 </div>
@@ -181,6 +191,12 @@
     private bool IsEditMode = false;
     private string ErrorMessage = "";
 
+    // Pagination
+    private int CurrentPage = 1;
+    private int TotalPages = 1;
+    private int TotalRecords = 0;
+    private int PageSize = 10;
+
     // Helper to handle role selection binding
     private UserRole SelectedRole
     {
@@ -205,16 +221,25 @@
         await LoadUsers();
     }
 
+    private async Task HandlePageChanged(int newPage)
+    {
+        CurrentPage = newPage;
+        await LoadUsers();
+    }
+
     private async Task LoadUsers()
     {
         IsLoading = true;
         ErrorMessage = "";
         try
         {
-            var response = await UserService.GetAllUsersAsync();
+            var filter = new PaginationFilter { PageNumber = CurrentPage, PageSize = PageSize };
+            var response = await UserService.GetAllUsersAsync(filter);
             if (response.IsSuccess && response.Data != null)
             {
-                UserList = response.Data.ToList();
+                UserList = response.Data.Data.ToList();
+                TotalPages = response.Data.TotalPages;
+                TotalRecords = response.Data.TotalRecords;
             }
             else
             {

@@ -250,10 +250,10 @@
 
     private async Task LoadSalesData()
     {
-        var response = await SaleService.GetAllOrdersAsync();
-        if (response?.Data == null) return;
-
-        var orders = response.Data.ToList();
+        var response = await SaleService.GetAllOrdersAsync(new PaginationFilter { PageSize = 1000 });
+        if (response?.Data?.Data == null) return;
+        
+        var orders = response.Data.Data.ToList();
         _allOrders = orders; // save for toggle
 
         _totalSalesCount = orders.Count;
@@ -347,8 +347,8 @@
     private async Task LoadCustomerCount()
     {
         // Need a merchant ID to query customers
-        var merchantResponse = await MerchantService.GetAllMerchantsAsync();
-        var firstMerchant = merchantResponse?.Data?.FirstOrDefault();
+        var merchantResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 1 });
+        var firstMerchant = merchantResponse?.Data?.Data?.FirstOrDefault();
         if (firstMerchant == null) return;
 
         var customerResponse = await CustomerService.GetCustomersAsync(

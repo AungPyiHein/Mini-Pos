@@ -17,17 +17,17 @@ namespace POS.Backend.Features.Inventory
         }
 
         [HttpGet("branch/{branchId}")]
-        public async Task<IActionResult> GetBranchInventory(Guid branchId)
+        public async Task<IActionResult> GetBranchInventory(Guid branchId, [FromQuery] PaginationFilter filter)
         {
-            var result = await _inventoryServices.GetBranchInventoryAsync(branchId);
-            return result.IsSuccess ? Ok(new { Message = "Inventory retrieved successfully", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            var result = await _inventoryServices.GetBranchInventoryAsync(branchId, filter);
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Inventory retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
         [HttpPost("adjust")]
         public async Task<IActionResult> AdjustStock([FromBody] UpdateStockRequest request)
         {
             var result = await _inventoryServices.AdjustStockAsync(request);
-            return result.IsSuccess ? Ok(new { Message = "Stock adjusted successfully", Data = result.Value }) : BadRequest(new { Message = result.Error });
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Stock adjusted successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
     }
 }
