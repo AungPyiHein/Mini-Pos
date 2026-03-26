@@ -22,7 +22,13 @@
             <div class="relative flex-1">
                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 <input type="text" placeholder="Search products…" class="form-input pl-9" 
-                       @bind="SearchQuery" @onkeyup="HandleSearch" />
+                       @bind="SearchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
+                @if (isSearching)
+                {
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div class="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
+                    </div>
+                }
             </div>
             <select class="form-input w-48 text-xs" @bind="selectedBranchId">
                 <option value="">— Select Branch —</option>
@@ -42,7 +48,7 @@
 
         <!-- Product grid -->
         <div class="flex-1 overflow-y-auto">
-            @if (isLoading)
+            @if (isLoading && !isSearching)
             {
                 <div class="flex items-center justify-center h-full">
                     <div class="flex flex-col items-center gap-2">
@@ -177,6 +183,8 @@
     private string SearchQuery = "";
     private Guid? selectedCategoryId;
     private bool isLoading = true;
+    private bool isSearching = false;
+    private CancellationTokenSource? _searchCts;
 
     private List<ProductsResponseDto> ProductList = new();
     private List<CategoryResponseDto> CategoryList = new();
@@ -250,9 +258,10 @@
         }
     }
 
-    private async Task LoadProducts()
+    private async Task LoadProducts(bool isSearching = false)
     {
-        isLoading = true;
+        if (!isSearching) isLoading = true;
+        this.isSearching = isSearching;
         try 
         {
             var filter = new PaginationFilter() 
@@ -276,12 +285,25 @@
         finally
         {
             isLoading = false;
+            isSearching = false;
         }
     }
 
     private async Task HandleSearch(KeyboardEventArgs e)
     {
-        await LoadProducts();
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            await LoadProducts(isSearching: true);
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore cancellation
+        }
     }
 
     private async Task HandleCategoryChange(ChangeEventArgs e)

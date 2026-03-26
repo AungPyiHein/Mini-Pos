@@ -51,6 +51,10 @@
             <div class="flex items-center gap-2">
                 <input type="text" placeholder="Search products…" class="form-input max-w-xs" 
                        @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+                @if (IsSearching)
+                {
+                    <div class="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
+                }
             </div>
         </div>
     }
@@ -58,7 +62,7 @@
     @if (SelectedBranch != null)
     {
         <div class="card">
-            @if (IsLoadingInventory)
+            @if (IsLoadingInventory && !IsSearching)
             {
                 <div class="flex justify-center py-20">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
@@ -218,6 +222,8 @@
     private string BranchErrorMessage = "";
     private string InventoryErrorMessage = "";
     private string searchTerm = string.Empty;
+    private bool IsSearching = false;
+    private CancellationTokenSource? _searchCts;
     
     // Pagination
     private int CurrentPage = 1;
@@ -300,16 +306,29 @@
 
     private async Task HandleSearch(KeyboardEventArgs e)
     {
-        CurrentPage = 1;
-        if (SelectedBranch != null)
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
         {
-            await LoadInventory(SelectedBranch.Id);
+            await Task.Delay(300, token);
+            CurrentPage = 1;
+            if (SelectedBranch != null)
+            {
+                await LoadInventory(SelectedBranch.Id, isSearching: true);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore cancellation
         }
     }
 
-    private async Task LoadInventory(Guid branchId)
+    private async Task LoadInventory(Guid branchId, bool isSearching = false)
     {
-        IsLoadingInventory = true;
+        if (!isSearching) IsLoadingInventory = true;
+        IsSearching = isSearching;
         InventoryErrorMessage = "";
         try
         {
@@ -338,6 +357,7 @@
         finally
         {
             IsLoadingInventory = false;
+            IsSearching = false;
         }
     }
 

@@ -24,9 +24,13 @@
 
     <div class="card">
         <div class="card-header">
-            <div class="flex gap-3 flex-wrap">
+            <div class="flex gap-3 flex-wrap items-center">
                 <input type="text" placeholder="Search products…" class="form-input max-w-xs" 
                        @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+                @if (isSearching)
+                {
+                    <div class="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
+                }
                 <select class="form-input w-40" value="@SelectedCategoryIdString" @onchange="HandleCategoryChange">
                     <option value="">All Categories</option>
                     @foreach (var cat in CategoryList)
@@ -49,7 +53,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @if (isLoading)
+                    @if (isLoading && !isSearching)
                     {
                         <tr><td colspan="6" class="text-center py-4">Loading products...</td></tr>
                     }
@@ -171,6 +175,8 @@
     private bool isEditMode = false;
     private bool isSaving = false;
     private string searchTerm = string.Empty;
+    private bool isSearching = false;
+    private CancellationTokenSource? _searchCts;
     private Guid? selectedCategoryId;
     private ProductFormModel formModel = new();
 
@@ -241,8 +247,20 @@
 
     private async Task HandleSearch(KeyboardEventArgs e)
     {
-        currentPage = 1;
-        await LoadData();
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            currentPage = 1;
+            await LoadData(isSearching: true);
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore cancellation
+        }
     }
 
     private async Task HandlePageChanged(int newPage)
@@ -251,9 +269,10 @@
         await LoadData();
     }
 
-    private async Task LoadData()
+    private async Task LoadData(bool isSearching = false)
     {
-        isLoading = true;
+        if (!isSearching) isLoading = true;
+        this.isSearching = isSearching;
         try 
         {
             var filter = new POS.Shared.Models.PaginationFilter() 
@@ -279,6 +298,7 @@
         finally
         {
             isLoading = false;
+            isSearching = false;
         }
     }
 

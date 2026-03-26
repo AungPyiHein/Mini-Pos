@@ -23,8 +23,14 @@
 
     <div class="card">
         <div class="card-header">
-            <input type="text" placeholder="Search customers…" class="form-input max-w-xs" @bind="SearchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
-            <span class="text-xs text-muted">@TotalRecords total</span>
+            <div class="flex gap-3 flex-wrap items-center">
+                <input type="text" placeholder="Search customers…" class="form-input max-w-xs" @bind="SearchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+                @if (IsSearching)
+                {
+                    <div class="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
+                }
+                <span class="text-xs text-muted">@TotalRecords total</span>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="data-table">
@@ -39,7 +45,7 @@
                     </tr>
                 </thead>
                 <tbody class="relative">
-                    @if (IsLoading)
+                    @if (IsLoading && !IsSearching)
                     {
                         <tr>
                             <td colspan="4" class="text-center py-10">
@@ -54,7 +60,7 @@
                         <tr>
                             <td colspan="4" class="text-center py-10 text-red-500">
                                 @ErrorMessage
-                                <button class="btn-secondary ml-2" @onclick="LoadCustomers">Retry</button>
+                                <button class="btn-secondary ml-2" @onclick="() => LoadCustomers()">Retry</button>
                             </td>
                         </tr>
                     }
@@ -168,6 +174,8 @@
     private bool IsEditMode = false;
     private string ErrorMessage = "";
     private string SearchTerm = "";
+    private bool IsSearching = false;
+    private CancellationTokenSource? _searchCts;
     private int TotalRecords = 0;
     
     // Pagination
@@ -208,9 +216,28 @@
         await LoadCustomers();
     }
 
-    private async Task LoadCustomers()
+    private async Task HandleSearch(KeyboardEventArgs e)
     {
-        IsLoading = true;
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            CurrentPage = 1;
+            await LoadCustomers(isSearching: true);
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore cancellation
+        }
+    }
+
+    private async Task LoadCustomers(bool isSearching = false)
+    {
+        if (!isSearching) IsLoading = true;
+        IsSearching = isSearching;
         ErrorMessage = "";
         try
         {
@@ -246,13 +273,13 @@
         finally
         {
             IsLoading = false;
+            IsSearching = false;
         }
     }
 
     private void HandleSearch()
     {
-        CurrentPage = 1;
-        _ = LoadCustomers();
+        // This old method is replaced by the KeyboardEventArgs one
     }
 
     private void ShowAddModal()

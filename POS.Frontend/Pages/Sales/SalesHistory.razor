@@ -22,12 +22,20 @@
     <div class="card">
         <div class="card-body">
             <div class="flex flex-wrap gap-3 items-center">
-                <input type="text" 
-                       placeholder="Search invoice or customer…" 
-                       class="form-input max-w-xs" 
-                       @bind-value="_searchTerm"
-                       @bind-value:event="oninput"
-                       @onkeyup="HandleSearch" />
+                <div class="relative flex-1 max-w-xs">
+                    <input type="text" 
+                           placeholder="Search invoice or customer…" 
+                           class="form-input w-full" 
+                           @bind-value="_searchTerm"
+                           @bind-value:event="oninput"
+                           @onkeyup="HandleSearch" />
+                    @if (_isSearching)
+                    {
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div class="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
+                        </div>
+                    }
+                </div>
                 <input type="date" class="form-input w-40" />
                 <input type="date" class="form-input w-40" />
                 <button class="btn-primary">Filter</button>
@@ -52,7 +60,7 @@
                     </tr>
                 </thead>
                 <tbody class="relative">
-                    @if (_isLoading)
+                    @if (_isLoading && !_isSearching)
                     {
                         <tr>
                             <td colspan="8" class="text-center py-8">
@@ -71,7 +79,7 @@
                         <tr>
                             <td colspan="8" class="text-center py-8 text-red-500">
                                 <p>@_errorMessage</p>
-                                <button class="btn-secondary mt-4" @onclick="LoadSales">Try Again</button>
+                                <button class="btn-secondary mt-4" @onclick="() => LoadSales()">Try Again</button>
                             </td>
                         </tr>
                     }
@@ -119,15 +127,16 @@
 @code {
     private List<OrderResponseDto> Sales = new();
     private bool _isLoading = true;
-    private string? _errorMessage;
 
     // Pagination
     private int _currentPage = 1;
     private int _totalPages = 1;
     private int _totalRecords = 0;
     private int _pageSize = 10;
-
+    private string? _errorMessage;
     private string _searchTerm = "";
+    private bool _isSearching = false;
+    private CancellationTokenSource? _searchCts;
 
     protected override async Task OnInitializedAsync()
     {
@@ -142,16 +151,26 @@
 
     private async Task HandleSearch(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" || string.IsNullOrEmpty(e.Key)) // Trigger search on Enter or when input changes (oninput event)
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
         {
+            await Task.Delay(300, token);
             _currentPage = 1;
-            await LoadSales();
+            await LoadSales(isSearching: true);
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore cancellation
         }
     }
 
-    private async Task LoadSales()
+    private async Task LoadSales(bool isSearching = false)
     {
-        _isLoading = true;
+        if (!isSearching) _isLoading = true;
+        _isSearching = isSearching;
         _errorMessage = null;
 
         var filter = new PaginationFilter

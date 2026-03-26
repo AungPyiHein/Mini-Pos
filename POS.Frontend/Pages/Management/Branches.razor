@@ -17,7 +17,7 @@
         </button>
     </div>
 
-    @if (IsLoading)
+    @if (IsLoading && !IsSearching)
     {
         <div class="flex justify-center py-20">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
@@ -31,9 +31,13 @@
     }
     <div class="card">
         <div class="card-header">
-            <div class="flex gap-3 flex-wrap">
+            <div class="flex gap-3 flex-wrap items-center">
                 <input type="text" placeholder="Search branches…" class="form-input max-w-xs" 
                        @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+                @if (IsSearching)
+                {
+                    <div class="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
+                }
             </div>
         </div>
 
@@ -151,6 +155,8 @@
     private bool IsEditMode = false;
     private string ErrorMessage = "";
     private string searchTerm = string.Empty;
+    private bool IsSearching = false;
+    private CancellationTokenSource? _searchCts;
 
     // Pagination
     private int CurrentPage = 1;
@@ -171,13 +177,26 @@
 
     private async Task HandleSearch(KeyboardEventArgs e)
     {
-        CurrentPage = 1;
-        await LoadBranches();
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            CurrentPage = 1;
+            await LoadBranches(isSearching: true);
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore cancellation
+        }
     }
 
-    private async Task LoadBranches()
+    private async Task LoadBranches(bool isSearching = false)
     {
-        IsLoading = true;
+        if (!isSearching) IsLoading = true;
+        IsSearching = isSearching;
         ErrorMessage = "";
         try
         {
@@ -213,6 +232,7 @@
         finally
         {
             IsLoading = false;
+            IsSearching = false;
         }
     }
 
