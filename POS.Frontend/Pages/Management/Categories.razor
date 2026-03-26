@@ -73,7 +73,7 @@
                                 <td>
                                     <div class="flex items-center gap-2">
                                         <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-sm">📁</div>
-                                        <span class="font-medium text-gray-800">@c.Name</span>
+                                        <span class="font-medium text-gray-800 dark:text-gray-200">@c.Name</span>
                                     </div>
                                 </td>
                                 <td class="text-muted">@c.Description</td>
@@ -98,10 +98,10 @@
     @if (showModal)
     {
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
+            <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
                 <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 class="text-lg font-bold text-gray-800">@(isEditMode ? "Edit Category" : "Add New Category")</h3>
-                    <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">@(isEditMode ? "Edit Category" : "Add New Category")</h3>
+                    <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
@@ -127,7 +127,7 @@
                         </div>
                     }
                 </div>
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <div class="px-6 py-4 bg-gray-50 dark:bg-surface border-t border-gray-100 flex justify-end gap-3">
                     <button @onclick="CloseModal" class="btn-secondary">Cancel</button>
                     <button @onclick="SaveCategory" class="btn-primary" disabled="@_isSaving">
                         @if (_isSaving)

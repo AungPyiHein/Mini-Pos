@@ -39,7 +39,7 @@
         <div class="flex gap-2 flex-wrap">
             @foreach (var b in Branches)
             {
-                <button class="px-3 py-1.5 rounded-full text-xs font-medium transition-all @(SelectedBranch?.Id == b.Id ? "bg-accent text-white" : "bg-white border border-border text-muted hover:border-accent hover:text-accent")"
+                <button class="px-3 py-1.5 rounded-full text-xs font-medium transition-all @(SelectedBranch?.Id == b.Id ? "bg-accent text-white" : "bg-white dark:bg-surface border border-border text-muted hover:border-accent hover:text-accent")"
                         @onclick="() => SelectBranch(b)">
                     @b.Name
                 </button>
@@ -98,7 +98,7 @@
                                 <tr>
                                     <td>
                                         <div class="flex items-center gap-2">
-                                            <span class="font-medium text-gray-800">@item.ProductName</span>
+                                            <span class="font-medium text-gray-800 dark:text-gray-200">@item.ProductName</span>
                                         </div>
                                     </td>
                                     <td class="font-semibold">@item.StockQuantity</td>
@@ -133,10 +133,10 @@
 @if (ShowModal)
 {
     <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">Adjust Stock</h3>
-                <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Adjust Stock</h3>
+                <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
@@ -163,11 +163,11 @@
                 {
                     <div>
                         <label class="block text-xs font-medium text-muted mb-1 uppercase tracking-wider">Product</label>
-                        <div class="font-semibold text-gray-900">@SelectedProductName</div>
+                        <div class="font-semibold text-gray-900 dark:text-gray-100">@SelectedProductName</div>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-muted mb-1 uppercase tracking-wider">Current Stock</label>
-                        <div class="text-gray-700">@CurrentStockQuantity</div>
+                        <div class="text-gray-700 dark:text-gray-300">@CurrentStockQuantity</div>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-muted mb-1 uppercase tracking-wider">Adjustment (+ / -)</label>
@@ -176,7 +176,7 @@
                     </div>
                 }
             </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+            <div class="px-6 py-4 bg-gray-50 dark:bg-surface flex justify-end gap-3">
                 <button @onclick="CloseModal" class="btn-ghost">Cancel</button>
                 <button @onclick="HandleAdjustStock" class="btn-primary" disabled="@(IsSaving || AdjustmentRequest.ProductId == Guid.Empty)">
                     @if (IsSaving)

@@ -71,7 +71,7 @@
                                         <div class="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
                                             <span class="text-accent text-xs font-semibold">@c.Name[0]</span>
                                         </div>
-                                        <span class="font-medium text-gray-800">@c.Name</span>
+                                        <span class="font-medium text-gray-800 dark:text-gray-200">@c.Name</span>
                                     </div>
                                 </td>
                                 <td class="text-muted">@c.PhoneNumber</td>
@@ -95,28 +95,28 @@
 @if (ShowModal)
 {
     <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">@(IsEditMode ? "Edit Customer" : "Add New Customer")</h3>
-                <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">@(IsEditMode ? "Edit Customer" : "Add New Customer")</h3>
+                <button @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
             <div class="p-6 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
                     <input type="text" class="form-input w-full" @bind="CurrentCustomer.Name" placeholder="Enter customer name" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
                     <input type="text" class="form-input w-full" @bind="CurrentCustomer.PhoneNumber" placeholder="e.g. +1 555-0101" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
                     <input type="email" class="form-input w-full" @bind="CurrentCustomer.Email" placeholder="customer@example.com" />
                 </div>
             </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+            <div class="px-6 py-4 bg-gray-50 dark:bg-surface flex justify-end gap-3">
                 <button @onclick="CloseModal" class="btn-ghost">Cancel</button>
                 <button @onclick="SaveCustomer" class="btn-primary" disabled="@IsSaving">
                     @if (IsSaving)
