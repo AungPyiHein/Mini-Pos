@@ -23,6 +23,13 @@ namespace POS.Backend.Features.Inventory
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Inventory retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
+        [HttpGet("product/{productId}")]
+        public async Task<IActionResult> GetProductInventory(Guid productId)
+        {
+            var result = await _inventoryServices.GetProductInventoryAsync(productId);
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Product inventory retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
+        }
+
         [HttpPost("adjust")]
         public async Task<IActionResult> AdjustStock([FromBody] UpdateStockRequest request)
         {

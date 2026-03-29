@@ -162,6 +162,18 @@ namespace POS.Backend.Features.Sales
                                          EF.Functions.Like(o.Id.ToString(), $"%{filter.SearchTerm}%"));
             }
 
+            if (filter.StartDate.HasValue)
+            {
+                query = query.Where(o => o.OrderDate >= filter.StartDate.Value);
+            }
+
+            if (filter.EndDate.HasValue)
+            {
+                // Ensure the end date includes the entire day
+                var endDate = filter.EndDate.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(o => o.OrderDate <= endDate);
+            }
+
             var totalRecords = await query.CountAsync();
 
             var orders = await query

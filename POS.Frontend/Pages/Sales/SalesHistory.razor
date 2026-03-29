@@ -36,10 +36,10 @@
                         </div>
                     }
                 </div>
-                <input type="date" class="form-input w-40" />
-                <input type="date" class="form-input w-40" />
-                <button class="btn-primary">Filter</button>
-                <button class="btn-secondary">Clear</button>
+                <input type="date" class="form-input w-40" @bind="_startDate" />
+                <input type="date" class="form-input w-40" @bind="_endDate" />
+                <button class="btn-primary" @onclick="ApplyFilters">Filter</button>
+                <button class="btn-secondary" @onclick="ClearFilters">Clear</button>
             </div>
         </div>
     </div>
@@ -134,6 +134,8 @@
     private int _totalRecords = 0;
     private int _pageSize = 10;
     private string? _errorMessage;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
     private string _searchTerm = "";
     private bool _isSearching = false;
     private CancellationTokenSource? _searchCts;
@@ -167,6 +169,21 @@
         }
     }
 
+    private async Task ApplyFilters()
+    {
+        _currentPage = 1;
+        await LoadSales();
+    }
+
+    private async Task ClearFilters()
+    {
+        _searchTerm = "";
+        _startDate = null;
+        _endDate = null;
+        _currentPage = 1;
+        await LoadSales();
+    }
+
     private async Task LoadSales(bool isSearching = false)
     {
         if (!isSearching) _isLoading = true;
@@ -177,7 +194,9 @@
         {
             PageNumber = _currentPage,
             PageSize = _pageSize,
-            SearchTerm = _searchTerm
+            SearchTerm = _searchTerm,
+            StartDate = _startDate,
+            EndDate = _endDate
         };
         var response = await SaleService.GetAllOrdersAsync(filter);
         if (response?.Data != null)

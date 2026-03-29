@@ -6,6 +6,7 @@ public class InventoryResponseDto
 {
     public Guid Id { get; set; }
     public Guid BranchId { get; set; }
+    public string BranchName { get; set; } = null!;
     public Guid ProductId { get; set; }
     public string ProductName { get; set; } = null!;
     public int StockQuantity { get; set; }

@@ -8,6 +8,7 @@ namespace POS.Frontend.Services.Inventory;
 public interface IInventoryService
 {
     Task<ApiResponse<PagedResponse<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId, PaginationFilter filter);
+    Task<ApiResponse<IEnumerable<InventoryResponseDto>>> GetProductInventoryAsync(Guid productId);
     Task<ApiResponse<bool>> AdjustStockAsync(UpdateStockRequest request);
 }
 public class InventoryService : IInventoryService
@@ -31,6 +32,21 @@ public class InventoryService : IInventoryService
         catch (Exception ex)
         {
             return new ApiResponse<PagedResponse<InventoryResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<IEnumerable<InventoryResponseDto>>> GetProductInventoryAsync(Guid productId)
+    {
+        try
+        {
+            var url = $"/api/inventory/product/{productId}";
+            var response = await _http.GetFromJsonAsync<ApiResponse<IEnumerable<InventoryResponseDto>>>(url);
+            if (response != null) response.IsSuccess = response.Data != null;
+            return response ?? new ApiResponse<IEnumerable<InventoryResponseDto>> { IsSuccess = false, Message = "Empty response from server" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<IEnumerable<InventoryResponseDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
 

@@ -9,6 +9,7 @@ namespace POS.Backend.Features.Inventory
     {
         public Guid Id { get; set; }
         public Guid BranchId { get; set; }
+        public string BranchName { get; set; } = null!;
         public Guid ProductId { get; set; }
         public string ProductName { get; set; } = null!;
         public int StockQuantity { get; set; }
@@ -24,6 +25,7 @@ namespace POS.Backend.Features.Inventory
     public interface IInventoryServices
     {
         Task<Result<PagedResponse<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId, PaginationFilter filter);
+        Task<Result<IEnumerable<InventoryResponseDto>>> GetProductInventoryAsync(Guid productId);
         Task<Result<bool>> AdjustStockAsync(UpdateStockRequest request);
     }
 
@@ -40,6 +42,7 @@ namespace POS.Backend.Features.Inventory
         {
             var query = _context.BranchInventories
                 .Include(i => i.Product)
+                .Include(i => i.Branch)
                 .Where(i => i.BranchId == branchId && i.DeletedAt == null)
                 .AsQueryable();
 
@@ -57,6 +60,7 @@ namespace POS.Backend.Features.Inventory
                 {
                     Id = i.Id,
                     BranchId = i.BranchId,
+                    BranchName = i.Branch.Name,
                     ProductId = i.ProductId,
                     ProductName = i.Product.Name,
                     StockQuantity = i.StockQuantity
@@ -65,6 +69,27 @@ namespace POS.Backend.Features.Inventory
 
             var pagedResponse = new PagedResponse<InventoryResponseDto>(inventory, totalRecords, filter.PageNumber, filter.PageSize);
             return Result<PagedResponse<InventoryResponseDto>>.Success(pagedResponse);
+        }
+
+        public async Task<Result<IEnumerable<InventoryResponseDto>>> GetProductInventoryAsync(Guid productId)
+        {
+            var branches = await _context.Branches.Where(b => b.DeletedAt == null).ToListAsync();
+            var inventory = await _context.BranchInventories
+                .Include(i => i.Product)
+                .Where(i => i.ProductId == productId && i.DeletedAt == null)
+                .ToDictionaryAsync(i => i.BranchId);
+
+            var result = branches.Select(b => new InventoryResponseDto
+            {
+                Id = inventory.ContainsKey(b.Id) ? inventory[b.Id].Id : Guid.Empty,
+                BranchId = b.Id,
+                BranchName = b.Name,
+                ProductId = productId,
+                ProductName = inventory.ContainsKey(b.Id) ? inventory[b.Id].Product.Name : "N/A",
+                StockQuantity = inventory.ContainsKey(b.Id) ? inventory[b.Id].StockQuantity : 0
+            }).ToList();
+
+            return Result<IEnumerable<InventoryResponseDto>>.Success(result);
         }
 
         public async Task<Result<bool>> AdjustStockAsync(UpdateStockRequest request)
