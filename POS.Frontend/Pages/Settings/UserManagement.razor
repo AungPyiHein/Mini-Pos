@@ -19,26 +19,46 @@
     </div>
 
     <div class="card">
-        <div class="p-4 border-b border-gray-100 dark:border-gray-800">
-            <div class="max-w-sm relative">
-                <input type="text" 
-                       class="form-input w-full pl-10" 
-                       placeholder="Search users by name or email..." 
-                       @bind-value="_searchTerm"
-                       @bind-value:event="oninput"
-                       @onkeyup="HandleSearch" />
-                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                </div>
-                @if (_isSearching)
-                {
-                    <div class="absolute right-3 top-1/2 -translate-y-1/2">
-                        <div class="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
+        <div class="card-header shrink-0 p-4 border-b border-gray-100 dark:border-gray-800">
+            <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full">
+                <div class="flex gap-3 flex-wrap items-center">
+                    <div class="relative max-w-sm">
+                        <input type="text" 
+                               class="form-input w-full pl-10" 
+                               placeholder="Search users by name or email..." 
+                               @bind-value="_searchTerm"
+                               @bind-value:event="oninput"
+                               @onkeyup="HandleSearch" />
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
+                        @if (_isSearching)
+                        {
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                                <div class="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
+                            </div>
+                        }
                     </div>
-                }
+                </div>
+
+                <!-- View Toggle -->
+                <div class="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg shrink-0">
+                    <button class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors @(!isGridView ? "bg-white dark:bg-surface text-accent shadow-sm" : "text-gray-500 hover:text-gray-700")"
+                            @onclick="() => isGridView = false">
+                        <svg class="w-4 h-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                        List
+                    </button>
+                    <button class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors @(isGridView ? "bg-white dark:bg-surface text-accent shadow-sm" : "text-gray-500 hover:text-gray-700")"
+                            @onclick="() => isGridView = true">
+                        <svg class="w-4 h-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                        Grid
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+        @if (!isGridView)
+        {
             <table class="data-table">
                 <thead>
                     <tr>
@@ -115,6 +135,40 @@
                     }
                 </tbody>
             </table>
+        }
+        else
+        {
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                @foreach (var u in UserList)
+                {
+                    <div class="group bg-white dark:bg-surface border border-gray-100 dark:border-gray-800 rounded-2xl p-4 hover:shadow-xl hover:border-accent/20 transition-all">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center text-xl text-accent group-hover:bg-accent group-hover:text-white transition-colors">
+                                <span class="font-bold">@u.Username[0]</span>
+                            </div>
+                            @if (u.IsActive)
+                            { <span class="badge badge-success">Active</span> }
+                            else
+                            { <span class="badge badge-warning">Inactive</span> }
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-900 dark:text-gray-100 text-lg mb-1 truncate">@u.Username</h4>
+                            <p class=\"text-sm text-gray-400 mb-3 truncate\">@u.Email</p>
+                            @if (u.Role == "Admin")
+                            { <span class="badge bg-purple-100 text-purple-700">@u.Role</span> }
+                            else if (u.Role == "MerchantAdmin")
+                            { <span class="badge badge-info">Merchant Admin</span> }
+                            else
+                            { <span class="badge bg-gray-100 dark:bg-border/30 text-gray-700 dark:text-gray-300">@u.Role</span> }
+                        </div>
+                        <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                            <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowEditModal(u)">Edit</button>
+                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => DeleteUser(u.Id)">Revoke</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
         </div>
         @if (!IsLoading && TotalRecords > 0)
         {
@@ -211,6 +265,7 @@
     private string ErrorMessage = "";
     private string _searchTerm = "";
     private bool _isSearching = false;
+    private bool isGridView = true;
     private CancellationTokenSource? _searchCts;
 
     // Pagination

@@ -127,16 +127,28 @@
   }
 }
 
-/* Sidebar scrollbar */
+/* Custom Scrollbar for all pages */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #2d3048;
+}
+
+/* Sidebar specifically */
 .sidebar-scroll::-webkit-scrollbar {
   width: 4px;
 }
-.sidebar-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
 .sidebar-scroll::-webkit-scrollbar-thumb {
   background: #2d3048;
-  border-radius: 2px;
 }
 
 /* Smooth page transitions */
