@@ -213,9 +213,10 @@
                ?? user.FindFirst("role")?.Value
                ?? "";
 
-        var idClaim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                      ?? user.FindFirst("nameid")?.Value
-                      ?? user.FindFirst("sub")?.Value;
+        // JWT stores the GUID in the custom "UserId" claim; "sub" contains the username
+        var idClaim = user.FindFirst("UserId")?.Value
+                       ?? user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                       ?? user.FindFirst("nameid")?.Value;
 
         userId = idClaim ?? "";
 
@@ -237,37 +238,11 @@
                     email = response.Data.Email;
                     editEmail = response.Data.Email;
                     accountStatus = response.Data.IsActive ? "Active" : "Inactive";
+                    if (!string.IsNullOrEmpty(response.Data.MerchantName)) merchantNameDisplay = response.Data.MerchantName;
+                    if (!string.IsNullOrEmpty(response.Data.BranchName)) branchNameDisplay = response.Data.BranchName;
                 }
             }
             catch { /* fallback to claims only */ }
-        }
-
-        if (Guid.TryParse(merchantIdDisplay, out var mId))
-        {
-            try
-            {
-                var mRes = await MerchantService.GetAllMerchantsAsync(new POS.Shared.Models.PaginationFilter { PageSize = 100 });
-                if (mRes.IsSuccess && mRes.Data != null)
-                {
-                    var m = mRes.Data.Data.FirstOrDefault(x => x.Id == mId);
-                    if (m != null) merchantNameDisplay = m.Name;
-                }
-            }
-            catch {}
-        }
-
-        if (Guid.TryParse(branchIdDisplay, out var bId))
-        {
-            try
-            {
-                var bRes = await BranchService.GetAllBranchesAsync(new POS.Shared.Models.PaginationFilter { PageSize = 100 });
-                if (bRes.IsSuccess && bRes.Data != null)
-                {
-                    var b = bRes.Data.Data.FirstOrDefault(x => x.Id == bId);
-                    if (b != null) branchNameDisplay = b.Name;
-                }
-            }
-            catch {}
         }
 
         isLoading = false;

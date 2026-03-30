@@ -9,6 +9,10 @@
 @inject IProductService ProductService
 @inject IMerchantService MerchantService
 @inject ICustomerService CustomerService
+@using Microsoft.AspNetCore.Components.Authorization
+@using POS.Frontend.Services.Merchants
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IBranchService BranchService
 
 <div class="space-y-6">
 
@@ -28,6 +32,30 @@
     }
     else
     {
+        @if (_availableBranches.Any())
+        {
+            <div class="flex justify-between items-center bg-white dark:bg-surface p-4 rounded-xl border border-gray-100 dark:border-border shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Branch Overview</h2>
+                        <p class="text-sm text-muted">Select a branch to view its specific sales data</p>
+                    </div>
+                </div>
+                <select class="form-input w-64 shadow-sm font-medium" value="@SelectedBranchId" @onchange="OnBranchChanged">
+                    <option value="">All Branches</option>
+                    @foreach (var branch in _availableBranches)
+                    {
+                        <option value="@branch.Id">@branch.Name</option>
+                    }
+                </select>
+            </div>
+        }
+
         <!-- KPI Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
 
@@ -215,6 +243,12 @@
     private bool _isLoading = true;
     private string _errorMessage = string.Empty;
 
+    // Branches
+    private List<BranchResponseDto> _availableBranches = new();
+    private Guid? SelectedBranchId;
+    private string CallerRole = "";
+    private Guid? CallerMerchantId;
+
     // KPI values
     private decimal _totalRevenue;
     private int     _totalSalesCount;
@@ -236,6 +270,32 @@
     {
         try
         {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            CallerRole = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                         ?? user.FindFirst("role")?.Value
+                         ?? "";
+
+            var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
+            if (Guid.TryParse(merchantClaim, out var mId)) CallerMerchantId = mId;
+
+            if (CallerRole == "MerchantAdmin" && CallerMerchantId.HasValue)
+            {
+                var branchResponse = await BranchService.GetBranchesByMerchantIdAsync(CallerMerchantId.Value, new PaginationFilter { PageSize = 100 });
+                if (branchResponse?.Data?.Data != null)
+                {
+                    _availableBranches = branchResponse.Data.Data.ToList();
+                }
+            }
+            else if (CallerRole == "Admin")
+            {
+                var branchResponse = await BranchService.GetAllBranchesAsync(new PaginationFilter { PageSize = 100 });
+                if (branchResponse?.Data?.Data != null)
+                {
+                    _availableBranches = branchResponse.Data.Data.ToList();
+                }
+            }
+
             await Task.WhenAll(LoadSalesData(), LoadProductCount(), LoadCustomerCount());
         }
         catch (Exception ex)
@@ -248,9 +308,26 @@
         }
     }
 
+    private async Task OnBranchChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var branchId))
+        {
+            SelectedBranchId = branchId;
+        }
+        else
+        {
+            SelectedBranchId = null;
+        }
+        
+        _isLoading = true;
+        await LoadSalesData();
+        _isLoading = false;
+    }
+
     private async Task LoadSalesData()
     {
-        var response = await SaleService.GetAllOrdersAsync(new PaginationFilter { PageSize = 1000 });
+        var filter = new PaginationFilter { PageSize = 1000, BranchId = SelectedBranchId };
+        var response = await SaleService.GetAllOrdersAsync(filter);
         if (response?.Data?.Data == null) return;
         
         var orders = response.Data.Data.ToList();

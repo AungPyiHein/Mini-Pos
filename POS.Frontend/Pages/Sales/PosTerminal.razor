@@ -229,6 +229,7 @@
     private bool isProcessing = false;
     private string statusMessage = "";
     private bool isError = false;
+    private Guid? currentMerchantId;
 
     private class CartItem
     {
@@ -260,19 +261,45 @@
                 selectedBranchId = staffBranch;
         }
 
-        await Task.WhenAll(LoadCategories(), LoadProducts(), LoadBranches(), LoadCustomers());
+        var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
+        if (Guid.TryParse(merchantClaim, out var mId))
+            currentMerchantId = mId;
+
+        // For Staff: load inventory first (from their locked branch) so products show correct stock
+        if (IsStaff && selectedBranchId.HasValue)
+        {
+            await Task.WhenAll(
+                LoadCategories(),
+                LoadBranches(),
+                LoadCustomers(),
+                LoadInventoryForBranch()
+            );
+            await LoadProducts();
+        }
+        else
+        {
+            await Task.WhenAll(LoadCategories(), LoadProducts(), LoadBranches(), LoadCustomers());
+        }
     }
 
     private async Task LoadCustomers()
     {
         try
         {
-            var merchantsResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 100 });
-            if (merchantsResponse?.Data?.Data != null && merchantsResponse.Data.Data.Any())
+            Guid? targetMerchant = currentMerchantId;
+            if (targetMerchant == null && !IsStaff)
             {
-                var merchantId = merchantsResponse.Data.Data.First().Id;
+                var merchantsResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 100 });
+                if (merchantsResponse?.Data?.Data != null && merchantsResponse.Data.Data.Any())
+                {
+                    targetMerchant = merchantsResponse.Data.Data.First().Id;
+                }
+            }
+
+            if (targetMerchant.HasValue)
+            {
                 var filter = new PaginationFilter { PageNumber = 1, PageSize = 100 };
-                var response = await CustomerService.GetCustomersAsync(merchantId, filter);
+                var response = await CustomerService.GetCustomersAsync(targetMerchant.Value, filter);
                 if (response?.Data?.Data != null)
                 {
                     CustomerList = response.Data.Data.ToList();
@@ -291,16 +318,17 @@
         if (response?.Data?.Data != null)
         {
             BranchList = response.Data.Data.ToList();
-            // Staff: branch already locked from JWT claims - don't override
-            // Admin/MerchantAdmin: auto-select the first branch
             if (!IsStaff && !selectedBranchId.HasValue && BranchList.Any())
             {
+                // Admin/MerchantAdmin: auto-select first branch and load its inventory
                 selectedBranchId = BranchList.First().Id;
             }
-            if (selectedBranchId.HasValue)
+            // Staff: inventory already loaded directly in OnInitializedAsync — skip to avoid double call
+            if (!IsStaff && selectedBranchId.HasValue)
             {
                 await LoadInventoryForBranch();
             }
+            StateHasChanged();
         }
     }
 

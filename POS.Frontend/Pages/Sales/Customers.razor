@@ -7,6 +7,7 @@
 @inject ICustomerService CustomerService
 @inject IMerchantService MerchantService
 @inject ISaleService SaleService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 
 <div class="space-y-5">
 
@@ -256,15 +257,33 @@
         IsLoading = true;
         try
         {
-            var merchantsResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 1 });
-            if (merchantsResponse.IsSuccess && merchantsResponse.Data?.Data != null && merchantsResponse.Data.Data.Any())
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
+            var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? user.FindFirst("role")?.Value ?? "";
+
+            if (!string.IsNullOrEmpty(merchantClaim) && Guid.TryParse(merchantClaim, out var mId))
             {
-                MerchantId = merchantsResponse.Data.Data.First().Id;
+                MerchantId = mId;
                 await LoadCustomers();
+            }
+            else if (role == "Admin")
+            {
+                var merchantsResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 1 });
+                if (merchantsResponse.IsSuccess && merchantsResponse.Data?.Data != null && merchantsResponse.Data.Data.Any())
+                {
+                    MerchantId = merchantsResponse.Data.Data.First().Id;
+                    await LoadCustomers();
+                }
+                else
+                {
+                    ErrorMessage = "No merchants found. Please create a merchant first.";
+                    IsLoading = false;
+                }
             }
             else
             {
-                ErrorMessage = "No merchants found. Please create a merchant first.";
+                ErrorMessage = "Unauthorized or missing merchant assignment.";
                 IsLoading = false;
             }
         }

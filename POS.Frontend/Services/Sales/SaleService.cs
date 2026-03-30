@@ -26,6 +26,10 @@ public class SaleService : ISaleService
         try
         {
             var url = $"/api/sales?pageNumber={filter.PageNumber}&pageSize={filter.PageSize}&searchTerm={Uri.EscapeDataString(filter.SearchTerm ?? "")}";
+            if (filter.BranchId.HasValue)
+            {
+                url += $"&branchId={filter.BranchId.Value}";
+            }
             var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<OrderResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;
             return response ?? new ApiResponse<PagedResponse<OrderResponseDto>> { IsSuccess = false, Message = "Error connecting to server" };

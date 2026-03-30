@@ -141,6 +141,10 @@ namespace POS.Backend.Features.Branch
             {
                 query = query.Where(b => b.MerchantId == _currentUser.MerchantId);
             }
+            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff && _currentUser.BranchId.HasValue)
+            {
+                query = query.Where(b => b.Id == _currentUser.BranchId);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {

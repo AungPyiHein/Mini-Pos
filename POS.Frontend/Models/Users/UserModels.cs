@@ -11,6 +11,8 @@ public class UserResponseDto
     public bool IsActive { get; set; }
     public Guid? MerchantId { get; set; }
     public Guid? BranchId { get; set; }
+    public string? MerchantName { get; set; }
+    public string? BranchName { get; set; }
 }
 
 public class CreateUserRequest

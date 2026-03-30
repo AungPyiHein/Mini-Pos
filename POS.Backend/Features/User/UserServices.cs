@@ -32,6 +32,8 @@ namespace POS.Backend.Features.User
         public bool IsActive { get; set; }
         public Guid? MerchantId { get; set; }
         public Guid? BranchId { get; set; }
+        public string? MerchantName { get; set; }
+        public string? BranchName { get; set; }
     }
 
     public interface IUserServices
@@ -83,6 +85,8 @@ namespace POS.Backend.Features.User
         public async Task<Result<UserResponseDto>> GetUserByIdAsync(Guid id)
         {
             var user = await _context.Users
+                .Include(u => u.Merchant)
+                .Include(u => u.Branch)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == id && u.DeletedAt == null);
             if (user == null) return Result<UserResponseDto>.Failure("User not found.");
@@ -95,7 +99,9 @@ namespace POS.Backend.Features.User
                 Role = user.Role,
                 IsActive = user.DeletedAt == null,
                 MerchantId = user.MerchantId,
-                BranchId = user.BranchId
+                BranchId = user.BranchId,
+                MerchantName = user.Merchant?.Name,
+                BranchName = user.Branch?.Name
             });
         }
 
@@ -120,6 +126,8 @@ namespace POS.Backend.Features.User
             var totalRecords = await query.CountAsync();
 
             var users = await query
+                .Include(u => u.Merchant)
+                .Include(u => u.Branch)
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .Select(u => new UserResponseDto
@@ -130,7 +138,9 @@ namespace POS.Backend.Features.User
                     Role = u.Role,
                     IsActive = u.DeletedAt == null,
                     MerchantId = u.MerchantId,
-                    BranchId = u.BranchId
+                    BranchId = u.BranchId,
+                    MerchantName = u.Merchant != null ? u.Merchant.Name : null,
+                    BranchName = u.Branch != null ? u.Branch.Name : null
                 })
                 .ToListAsync();
 
