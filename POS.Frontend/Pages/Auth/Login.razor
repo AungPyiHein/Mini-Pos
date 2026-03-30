@@ -1,4 +1,5 @@
 @page "/login"
+@attribute [AllowAnonymous]
 @layout EmptyLayout
 
 <div class="min-h-screen bg-sidebar flex">
@@ -50,13 +51,19 @@
             </div>
 
             <form class="space-y-5" @onsubmit="HandleLogin">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+                        @errorMessage
+                    </div>
+                }
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email / Username</label>
                     <div class="relative">
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                         </svg>
-                        <input type="text" class="form-input pl-10 py-2.5 text-base" placeholder="admin@example.com" />
+                        <input type="text" @bind-value="loginRequest.Username" class="form-input pl-10 py-2.5 text-base" placeholder="Admin username" required />
                     </div>
                 </div>
 
@@ -69,13 +76,24 @@
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
-                        <input type="password" class="form-input pl-10 py-2.5 text-base" placeholder="••••••••" />
+                        <input type="password" @bind-value="loginRequest.Password" class="form-input pl-10 py-2.5 text-base" placeholder="••••••••" required />
                     </div>
                 </div>
 
                 <div class="pt-2">
-                    <button type="submit" class="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-lg shadow-md transition-all">
-                        Sign In
+                    <button type="submit" disabled="@isLoading" class="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-lg shadow-md transition-all flex items-center justify-center">
+                        @if (isLoading)
+                        {
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Signing in...</span>
+                        }
+                        else
+                        {
+                            <span>Sign In</span>
+                        }
                     </button>
                 </div>
             </form>
@@ -90,9 +108,36 @@
 
 @code {
     [Inject] NavigationManager Nav { get; set; } = default!;
+    [Inject] POS.Frontend.Services.Auth.IAuthService AuthService { get; set; } = default!;
 
-    void HandleLogin()
+    private POS.Shared.Models.Auth.LoginRequest loginRequest = new();
+    private bool isLoading;
+    private string? errorMessage;
+
+    async Task HandleLogin()
     {
-        Nav.NavigateTo("");
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(loginRequest);
+            if (result.IsSuccess)
+            {
+                Nav.NavigateTo("");
+            }
+            else
+            {
+                errorMessage = result.Error ?? "Login failed. Please check your credentials.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An unexpected error occurred.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 }

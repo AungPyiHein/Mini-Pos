@@ -33,16 +33,24 @@ namespace POS.Backend.Features.Customers
     public class CustomerServices : ICustomerServices
     {
         private readonly AppDbContext _context;
+        private readonly ICurrentUserService _currentUser;
 
-        public CustomerServices(AppDbContext context)
+        public CustomerServices(AppDbContext context, ICurrentUserService currentUser)
         {
             _context = context;
+            _currentUser = currentUser;
         }
 
         public async Task<Result<PagedResponse<CustomerResponseDto>>> GetCustomersAsync(Guid merchantId, PaginationFilter filter)
         {
+            var targetMerchantId = merchantId;
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                targetMerchantId = _currentUser.MerchantId ?? targetMerchantId;
+            }
+
             var query = _context.Customers
-                .Where(c => c.MerchantId == merchantId && c.DeletedAt == null)
+                .Where(c => c.MerchantId == targetMerchantId && c.DeletedAt == null)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))

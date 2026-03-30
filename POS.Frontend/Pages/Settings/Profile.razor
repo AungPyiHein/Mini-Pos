@@ -1,5 +1,13 @@
 @page "/settings/profile"
 @layout MainLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using POS.Frontend.Services.Users
+@using POS.Frontend.Models.Users
+@using POS.Shared.Models
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IUserService UserService
+@inject POS.Frontend.Services.Merchants.IMerchantService MerchantService
+@inject POS.Frontend.Services.Merchants.IBranchService BranchService
 
 <div class="max-w-3xl space-y-5">
 
@@ -8,71 +16,359 @@
             <h2 class="page-title">My Profile</h2>
             <p class="page-subtitle">Manage your personal settings</p>
         </div>
-        <button class="btn-primary">Save Changes</button>
     </div>
 
-    <!-- Profile info -->
-    <div class="card">
-        <div class="card-header border-none pb-0">
-            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Personal Information</p>
+    @if (isLoading)
+    {
+        <div class="flex items-center justify-center py-20">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-accent"></div>
         </div>
-        <div class="card-body">
-            <div class="flex items-center gap-5 border-b border-border pb-6 mb-6">
-                <div class="w-20 h-20 rounded-full bg-accent text-white flex items-center justify-center text-3xl font-bold shadow-md">
-                    AD
-                </div>
-                <div>
-                    <button class="btn-secondary py-1.5 px-3 text-xs">Change Avatar</button>
-                    <p class="text-xs text-muted mt-2">JPG, GIF or PNG. Max size of 800K</p>
-                </div>
+    }
+    else
+    {
+        <!-- Profile info -->
+        <div class="card">
+            <div class="card-header border-none pb-0">
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Personal Information</p>
             </div>
+            <div class="card-body">
+                <!-- Avatar row -->
+                <div class="flex items-center gap-5 border-b border-border pb-6 mb-6">
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-indigo-500 text-white flex items-center justify-center text-3xl font-bold shadow-md select-none">
+                        @(string.IsNullOrEmpty(username) ? "?" : username.Substring(0, 1).ToUpper())
+                    </div>
+                    <div>
+                        <p class="text-base font-semibold text-gray-900 dark:text-gray-100">@username</p>
+                        <p class="text-sm text-muted">@email</p>
+                        <div class="mt-2">
+                            @if (role == "Admin")
+                            {
+                                <span class="badge bg-purple-100 text-purple-700">Admin</span>
+                            }
+                            else if (role == "MerchantAdmin")
+                            {
+                                <span class="badge badge-info">Merchant Admin</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-gray-100 dark:bg-border/30 text-gray-700 dark:text-gray-300">Staff</span>
+                            }
+                        </div>
+                    </div>
+                </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
-                    <input type="text" class="form-input" value="Admin User" />
+                <!-- Fields -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                        <input type="text" class="form-input bg-gray-50 dark:bg-surface text-muted" value="@username" disabled autocomplete="off" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                        <input type="email" class="form-input" @bind="editEmail" placeholder="your@email.com" autocomplete="off" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                        <input type="text" class="form-input bg-gray-50 dark:bg-surface text-muted" value="@(role == "MerchantAdmin" ? "Merchant Admin" : role)" disabled />
+                    </div>
+                    @if (!string.IsNullOrEmpty(accountStatus))
+                    {
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Account Status</label>
+                            <input type="text" class="form-input bg-gray-50 dark:bg-surface text-muted" value="@accountStatus" disabled />
+                        </div>
+                    }
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                    <input type="email" class="form-input" value="admin@minipos.com" disabled />
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
-                    <input type="tel" class="form-input" value="+1 555-0000" />
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Role</label>
-                    <input type="text" class="form-input bg-gray-50 dark:bg-surface text-muted" value="Super Admin" disabled />
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Security -->
-    <div class="card">
-        <div class="card-header">
-            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Security</p>
-        </div>
-        <div class="card-body space-y-4 max-w-sm">
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Current Password</label>
-                <input type="password" class="form-input" placeholder="••••••••" />
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">New Password</label>
-                <input type="password" class="form-input" placeholder="••••••••" />
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Confirm New Password</label>
-                <input type="password" class="form-input" placeholder="••••••••" />
-            </div>
-            <div class="pt-2">
-                <button class="btn-secondary">Update Password</button>
+                @if (!string.IsNullOrEmpty(infoMessage))
+                {
+                    <div class="mt-4 p-3 rounded-lg text-xs @(infoIsError ? "bg-red-50 dark:bg-red-900/20 text-red-600" : "bg-green-50 dark:bg-green-900/20 text-green-600")">
+                        @infoMessage
+                    </div>
+                }
+
+                <div class="flex justify-end mt-6">
+                    <button class="btn-primary" @onclick="SaveProfile" disabled="@isSavingProfile">
+                        @if (isSavingProfile)
+                        {
+                            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                        }
+                        Save Changes
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+
+        <!-- Security -->
+        <div class="card">
+            <div class="card-header">
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Security</p>
+            </div>
+            <div class="card-body space-y-4 max-w-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Current Password</label>
+                    <input type="password" class="form-input" @bind="oldPassword" placeholder="••••••••" autocomplete="new-password" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">New Password</label>
+                    <input type="password" class="form-input" @bind="newPassword" placeholder="••••••••" autocomplete="new-password" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Confirm New Password</label>
+                    <input type="password" class="form-input" @bind="confirmPassword" placeholder="••••••••" autocomplete="new-password" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(passwordMessage))
+                {
+                    <div class="p-3 rounded-lg text-xs @(passwordIsError ? "bg-red-50 dark:bg-red-900/20 text-red-600" : "bg-green-50 dark:bg-green-900/20 text-green-600")">
+                        @passwordMessage
+                    </div>
+                }
+
+                <div class="pt-2">
+                    <button class="btn-secondary" @onclick="UpdatePassword" disabled="@isSavingPassword">
+                        @if (isSavingPassword)
+                        {
+                            <div class="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin mr-2"></div>
+                        }
+                        Update Password
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Info (read-only context) -->
+        <div class="card">
+            <div class="card-header">
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Account Details</p>
+            </div>
+            <div class="card-body">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div class="bg-gray-50 dark:bg-surface/50 rounded-xl p-4 border border-border">
+                        <p class="text-xs text-muted mb-1 uppercase tracking-wider font-medium">User ID</p>
+                        <p class="font-mono text-xs text-gray-700 dark:text-gray-300 break-all">@userId</p>
+                    </div>
+                    @if (!string.IsNullOrEmpty(merchantNameDisplay))
+                    {
+                        <div class="bg-gray-50 dark:bg-surface/50 rounded-xl p-4 border border-border">
+                            <p class="text-xs text-muted mb-1 uppercase tracking-wider font-medium">Merchant</p>
+                            <p class="font-medium text-sm text-gray-700 dark:text-gray-300">@merchantNameDisplay</p>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(branchNameDisplay))
+                    {
+                        <div class="bg-gray-50 dark:bg-surface/50 rounded-xl p-4 border border-border">
+                            <p class="text-xs text-muted mb-1 uppercase tracking-wider font-medium">Branch Location</p>
+                            <p class="font-medium text-sm text-gray-700 dark:text-gray-300">@branchNameDisplay</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 
 </div>
 
 @code {
+    private bool isLoading = true;
+    private bool isSavingProfile = false;
+    private bool isSavingPassword = false;
+
+    private string userId = "";
+    private string username = "";
+    private string email = "";
+    private string role = "";
+    private string accountStatus = "Active";
+    private string merchantIdDisplay = "";
+    private string branchIdDisplay = "";
+
+    private string merchantNameDisplay = "";
+    private string branchNameDisplay = "";
+
+    // Editable fields
+    private string editEmail = "";
+    private string oldPassword = "";
+    private string newPassword = "";
+    private string confirmPassword = "";
+
+    // Status messages
+    private string infoMessage = "";
+    private bool infoIsError = false;
+    private string passwordMessage = "";
+    private bool passwordIsError = false;
+
+    private Guid? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        username = user.Identity?.Name
+                   ?? user.FindFirst("unique_name")?.Value
+                   ?? user.FindFirst("sub")?.Value
+                   ?? "Unknown";
+
+        role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+               ?? user.FindFirst("role")?.Value
+               ?? "";
+
+        var idClaim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? user.FindFirst("nameid")?.Value
+                      ?? user.FindFirst("sub")?.Value;
+
+        userId = idClaim ?? "";
+
+        var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
+        merchantIdDisplay = merchantClaim ?? "";
+
+        var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
+        branchIdDisplay = branchClaim ?? "";
+
+        // Load fresh data from API if we have a user ID
+        if (Guid.TryParse(idClaim, out var uid))
+        {
+            currentUserId = uid;
+            try
+            {
+                var response = await UserService.GetUserByIdAsync(uid);
+                if (response.IsSuccess && response.Data != null)
+                {
+                    email = response.Data.Email;
+                    editEmail = response.Data.Email;
+                    accountStatus = response.Data.IsActive ? "Active" : "Inactive";
+                }
+            }
+            catch { /* fallback to claims only */ }
+        }
+
+        if (Guid.TryParse(merchantIdDisplay, out var mId))
+        {
+            try
+            {
+                var mRes = await MerchantService.GetAllMerchantsAsync(new POS.Shared.Models.PaginationFilter { PageSize = 100 });
+                if (mRes.IsSuccess && mRes.Data != null)
+                {
+                    var m = mRes.Data.Data.FirstOrDefault(x => x.Id == mId);
+                    if (m != null) merchantNameDisplay = m.Name;
+                }
+            }
+            catch {}
+        }
+
+        if (Guid.TryParse(branchIdDisplay, out var bId))
+        {
+            try
+            {
+                var bRes = await BranchService.GetAllBranchesAsync(new POS.Shared.Models.PaginationFilter { PageSize = 100 });
+                if (bRes.IsSuccess && bRes.Data != null)
+                {
+                    var b = bRes.Data.Data.FirstOrDefault(x => x.Id == bId);
+                    if (b != null) branchNameDisplay = b.Name;
+                }
+            }
+            catch {}
+        }
+
+        isLoading = false;
+    }
+
+    private async Task SaveProfile()
+    {
+        if (!currentUserId.HasValue) return;
+
+        isSavingProfile = true;
+        infoMessage = "";
+
+        try
+        {
+            var request = new UpdateUserRequest { Email = editEmail };
+            var response = await UserService.UpdateUserAsync(currentUserId.Value, request);
+            if (response.IsSuccess)
+            {
+                email = editEmail;
+                infoMessage = "Profile updated successfully!";
+                infoIsError = false;
+            }
+            else
+            {
+                infoMessage = response.Message ?? "Failed to update profile.";
+                infoIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            infoMessage = $"Error: {ex.Message}";
+            infoIsError = true;
+        }
+        finally
+        {
+            isSavingProfile = false;
+        }
+    }
+
+    private async Task UpdatePassword()
+    {
+        passwordMessage = "";
+
+        if (string.IsNullOrWhiteSpace(oldPassword))
+        {
+            passwordMessage = "Please enter your current password.";
+            passwordIsError = true;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            passwordMessage = "Please enter a new password.";
+            passwordIsError = true;
+            return;
+        }
+
+        if (newPassword != confirmPassword)
+        {
+            passwordMessage = "Passwords do not match.";
+            passwordIsError = true;
+            return;
+        }
+
+        if (newPassword.Length < 6)
+        {
+            passwordMessage = "Password must be at least 6 characters.";
+            passwordIsError = true;
+            return;
+        }
+
+        if (!currentUserId.HasValue) return;
+
+        isSavingPassword = true;
+
+        try
+        {
+            var request = new UpdateUserRequest { PlainPassword = newPassword };
+            var response = await UserService.UpdateUserAsync(currentUserId.Value, request);
+            if (response.IsSuccess)
+            {
+                passwordMessage = "Password updated successfully!";
+                passwordIsError = false;
+                oldPassword = "";
+                newPassword = "";
+                confirmPassword = "";
+            }
+            else
+            {
+                passwordMessage = response.Message ?? "Failed to update password.";
+                passwordIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            passwordMessage = $"Error: {ex.Message}";
+            passwordIsError = true;
+        }
+        finally
+        {
+            isSavingPassword = false;
+        }
+    }
 }

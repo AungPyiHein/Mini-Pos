@@ -41,9 +41,12 @@ namespace POS.Backend.Features.Merchants
     public class MerchantsServices : IMerchantsServices
     {
         private readonly AppDbContext _context;
-        public MerchantsServices(AppDbContext context)
+        private readonly ICurrentUserService _currentUser;
+
+        public MerchantsServices(AppDbContext context, ICurrentUserService currentUser)
         {
             _context = context;
+            _currentUser = currentUser;
         }
         public async Task<Result<PagedResponse<MerchantResponseDto>>> GetAllMerchantsAsync(PaginationFilter filter)
         {
@@ -51,6 +54,11 @@ namespace POS.Backend.Features.Merchants
                 .AsNoTracking()
                 .Where(m => m.DeletedAt == null)
                 .AsQueryable();
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(m => m.Id == _currentUser.MerchantId);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {

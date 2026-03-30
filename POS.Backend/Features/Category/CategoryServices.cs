@@ -45,13 +45,25 @@ namespace POS.Backend.Features.Category
     public class CategoryService : ICategoryServices
     {
         private readonly AppDbContext _context;
-        public CategoryService(AppDbContext context)
+        private readonly ICurrentUserService _currentUser;
+
+        public CategoryService(AppDbContext context, ICurrentUserService currentUser)
         {
             _context = context;
+            _currentUser = currentUser;
         }
         public async Task<Result<PagedResponse<CategoryResponseDto>>> GetAllCategoriesAsync(PaginationFilter filter)
         {
             var query = _context.Categories.AsNoTracking().Where(c => c.DeletedAt == null).AsQueryable();
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(c => c.MerchantId == _currentUser.MerchantId);
+            }
+            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                query = query.Where(c => c.Products.Any(p => p.BranchInventories.Any(bi => bi.BranchId == _currentUser.BranchId)));
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
@@ -76,10 +88,21 @@ namespace POS.Backend.Features.Category
         }
         public async Task<Result<CategoryResponseDto>> GetCategoryByIdAsync(Guid id)
         {
-            var category = await _context.Categories
+            var query = _context.Categories
                 .AsNoTracking()
                 .Include(c => c.Merchant)
-                .Where(c => c.Id == id && c.DeletedAt == null)
+                .Where(c => c.Id == id && c.DeletedAt == null);
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(c => c.MerchantId == _currentUser.MerchantId);
+            }
+            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                query = query.Where(c => c.Products.Any(p => p.BranchInventories.Any(bi => bi.BranchId == _currentUser.BranchId)));
+            }
+
+            var category = await query
                 .Select(c => new CategoryResponseDto
                 {
                     Id = c.Id,

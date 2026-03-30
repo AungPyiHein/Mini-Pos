@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using POS.Backend.Features.Auth;
+using POS.Shared.Models.Auth;
 
 namespace POS.Backend.Features.Auth
 {
@@ -9,11 +10,12 @@ namespace POS.Backend.Features.Auth
     {
         private readonly IAuthServices _authServices;
 
-        public AuthController(IAuthServices authServices)
+         public AuthController(IAuthServices authServices)
         {
             _authServices = authServices;
         }
 
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {

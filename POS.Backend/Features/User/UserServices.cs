@@ -47,11 +47,13 @@ namespace POS.Backend.Features.User
     {
         private readonly AppDbContext _context;
         private readonly PasswordHasher<POS.data.Entities.User> _passwordHasher;
+        private readonly ICurrentUserService _currentUser;
 
-        public UserServices(AppDbContext context)
+        public UserServices(AppDbContext context, ICurrentUserService currentUser)
         {
             _context = context;
             _passwordHasher = new PasswordHasher<POS.data.Entities.User>();
+            _currentUser = currentUser;
         }
 
         public async Task<Result<Guid>> CreateUserAsync(CreateUserRequest request)
@@ -103,6 +105,11 @@ namespace POS.Backend.Features.User
                 .AsNoTracking()
                 .Where(u => u.DeletedAt == null)
                 .AsQueryable();
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(u => u.MerchantId == _currentUser.MerchantId);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {

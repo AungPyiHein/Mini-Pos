@@ -46,13 +46,25 @@ namespace POS.Backend.Features.Products
     public class ProductsServices : IProductsServices
     {
         public readonly AppDbContext _context;
-        public ProductsServices(AppDbContext context)
+        private readonly ICurrentUserService _currentUser;
+
+        public ProductsServices(AppDbContext context, ICurrentUserService currentUser)
         {
             _context = context;
+            _currentUser = currentUser;
         }
         public async Task<Result<PagedResponse<ProductsResponseDto>>> GetAllProductsAsync(PaginationFilter filter)
         {
             var query = _context.Products.AsNoTracking().Where(p => p.DeletedAt == null).AsQueryable();
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(p => p.MerchantId == _currentUser.MerchantId);
+            }
+            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                query = query.Where(p => p.BranchInventories.Any(bi => bi.BranchId == _currentUser.BranchId));
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
@@ -92,11 +104,22 @@ namespace POS.Backend.Features.Products
         }
         public async Task<Result<ProductsResponseDto>> GetProductById(Guid id)
         {
-            var product = await _context.Products
+            var query = _context.Products
                 .AsNoTracking()
                 .Include(p => p.Category)
                 .Include(p => p.Merchant)
-                .Where(p => p.Id == id && p.DeletedAt == null)
+                .Where(p => p.Id == id && p.DeletedAt == null);
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(p => p.MerchantId == _currentUser.MerchantId);
+            }
+            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                query = query.Where(p => p.BranchInventories.Any(bi => bi.BranchId == _currentUser.BranchId));
+            }
+
+            var product = await query
                 .Select(p => new ProductsResponseDto
                 {
                     Id = p.Id,

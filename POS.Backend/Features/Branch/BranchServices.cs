@@ -37,9 +37,12 @@ namespace POS.Backend.Features.Branch
     public class BranchServices : IBranchServices
     {
         private readonly AppDbContext _context;
-        public BranchServices(AppDbContext context)
+        private readonly ICurrentUserService _currentUser;
+
+        public BranchServices(AppDbContext context, ICurrentUserService currentUser)
         {
             _context = context;
+            _currentUser = currentUser;
         }
 
         public async Task<Result<Guid>> CreateBranchAsync(CreateBranchRequest request)
@@ -133,6 +136,11 @@ namespace POS.Backend.Features.Branch
             var query = _context.Branches
                 .Where(b => b.DeletedAt == null)
                 .AsQueryable();
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(b => b.MerchantId == _currentUser.MerchantId);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {

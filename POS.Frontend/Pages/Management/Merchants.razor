@@ -1,4 +1,5 @@
 @page "/merchants"
+@attribute [Authorize(Roles = "Admin, MerchantAdmin")]
 @layout MainLayout
 @using POS.Frontend.Models.Merchants
 @inject IMerchantService MerchantService

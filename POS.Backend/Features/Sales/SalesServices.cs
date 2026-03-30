@@ -51,11 +51,13 @@ namespace POS.Backend.Features.Sales
     {
         private readonly AppDbContext _context;
         private readonly IInventoryServices _inventoryServices;
+        private readonly ICurrentUserService _currentUser;
 
-        public SalesServices(AppDbContext context, IInventoryServices inventoryServices)
+        public SalesServices(AppDbContext context, IInventoryServices inventoryServices, ICurrentUserService currentUser)
         {
             _context = context;
             _inventoryServices = inventoryServices;
+            _currentUser = currentUser;
         }
 
         public async Task<Result<Guid>> CreateOrderAsync(CreateOrderRequest request)
@@ -152,9 +154,19 @@ namespace POS.Backend.Features.Sales
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
                 .Include(o => o.Customer)
+                .Include(o => o.Branch)
                 .Where(o => o.DeletedAt == null)
                 .OrderByDescending(o => o.OrderDate)
                 .AsQueryable();
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(o => o.Branch != null && o.Branch.MerchantId == _currentUser.MerchantId);
+            }
+            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                query = query.Where(o => o.BranchId == _currentUser.BranchId);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {

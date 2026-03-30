@@ -1,8 +1,11 @@
 @page "/branches"
+@attribute [Authorize(Roles = "Admin, MerchantAdmin")]
 @layout MainLayout
 @using POS.Frontend.Models.Merchants
+@using Microsoft.AspNetCore.Components.Authorization
 @inject POS.Frontend.Services.Merchants.IBranchService BranchService
 @inject POS.Frontend.Services.Merchants.IMerchantService MerchantService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="space-y-5">
 
@@ -157,14 +160,22 @@
                 @if (!IsEditMode)
                 {
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Merchant</label>
-                        <select class="form-input w-full" @bind="CurrentBranch.MerchantId">
-                            <option value="">-- Choose Merchant --</option>
-                            @foreach (var m in MerchantList)
-                            {
-                                <option value="@m.Id">@m.Name</option>
-                            }
-                        </select>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Merchant</label>
+                        @if (CallerRole == "Admin")
+                        {
+                            <select class="form-input w-full" @bind="CurrentBranch.MerchantId">
+                                <option value="">-- Choose Merchant --</option>
+                                @foreach (var m in MerchantList)
+                                {
+                                    <option value="@m.Id">@m.Name</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            var mName = MerchantList.FirstOrDefault(m => m.Id == CallerMerchantId)?.Name ?? "Unknown Merchant";
+                            <input type="text" class="form-input w-full bg-gray-50 dark:bg-surface text-muted" value="@mName" disabled />
+                        }
                     </div>
                 }
                 <div>
@@ -205,6 +216,9 @@
     private bool isGridView = true;
     private CancellationTokenSource? _searchCts;
 
+    private string CallerRole = "";
+    private Guid? CallerMerchantId;
+
     // Pagination
     private int CurrentPage = 1;
     private int TotalPages = 1;
@@ -213,6 +227,15 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        CallerRole = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                     ?? user.FindFirst("role")?.Value
+                     ?? "";
+
+        var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
+        if (Guid.TryParse(merchantClaim, out var mId)) CallerMerchantId = mId;
+
         await LoadBranches();
     }
 
@@ -287,6 +310,10 @@
     {
         IsEditMode = false;
         CurrentBranch = new CreateBranchRequest();
+        if (CallerRole == "MerchantAdmin" && CallerMerchantId.HasValue)
+        {
+            CurrentBranch.MerchantId = CallerMerchantId.Value;
+        }
         ShowModal = true;
     }
 

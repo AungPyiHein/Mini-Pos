@@ -32,19 +32,32 @@ namespace POS.Backend.Features.Inventory
     public class InventoryServices : IInventoryServices
     {
         private readonly AppDbContext _context;
+        private readonly ICurrentUserService _currentUser;
 
-        public InventoryServices(AppDbContext context)
+        public InventoryServices(AppDbContext context, ICurrentUserService currentUser)
         {
             _context = context;
+            _currentUser = currentUser;
         }
 
         public async Task<Result<PagedResponse<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId, PaginationFilter filter)
         {
+            var targetBranchId = branchId;
+            if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                targetBranchId = _currentUser.BranchId ?? targetBranchId;
+            }
+
             var query = _context.BranchInventories
                 .Include(i => i.Product)
                 .Include(i => i.Branch)
-                .Where(i => i.BranchId == branchId && i.DeletedAt == null)
+                .Where(i => i.BranchId == targetBranchId && i.DeletedAt == null)
                 .AsQueryable();
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                query = query.Where(i => i.Branch.MerchantId == _currentUser.MerchantId);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
@@ -73,7 +86,19 @@ namespace POS.Backend.Features.Inventory
 
         public async Task<Result<IEnumerable<InventoryResponseDto>>> GetProductInventoryAsync(Guid productId)
         {
-            var branches = await _context.Branches.Where(b => b.DeletedAt == null).ToListAsync();
+            var branchQuery = _context.Branches.Where(b => b.DeletedAt == null).AsQueryable();
+
+            if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                branchQuery = branchQuery.Where(b => b.Id == _currentUser.BranchId);
+            }
+            else if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            {
+                branchQuery = branchQuery.Where(b => b.MerchantId == _currentUser.MerchantId);
+            }
+
+            var branches = await branchQuery.ToListAsync();
+
             var inventory = await _context.BranchInventories
                 .Include(i => i.Product)
                 .Where(i => i.ProductId == productId && i.DeletedAt == null)

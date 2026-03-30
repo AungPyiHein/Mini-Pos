@@ -4,6 +4,7 @@ namespace POS.Shared.Models
     {
         Admin,
         MerchantAdmin,
-        Staff
+        Staff,
+        Customer
     }
 }

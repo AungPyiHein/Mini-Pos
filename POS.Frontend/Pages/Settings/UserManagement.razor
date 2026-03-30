@@ -1,9 +1,12 @@
 @page "/settings/users"
+@attribute [Authorize]
 @layout MainLayout
 @using POS.Frontend.Services.Users
 @using POS.Frontend.Models.Users
 @using POS.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IUserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="space-y-5">
 
@@ -14,7 +17,7 @@
         </div>
         <button class="btn-primary" @onclick="ShowInviteModal">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-            Invite User
+            Create User
         </button>
     </div>
 
@@ -190,7 +193,7 @@
         <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <form @onsubmit="SaveUser">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">@(IsEditMode ? "Edit User" : "Invite New User")</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">@(IsEditMode ? "Edit User" : "Create New User")</h3>
                     <button type="button" @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -200,40 +203,40 @@
                     {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
-                            <input type="text" class="form-input w-full" @bind="CreateRequest.Username" required placeholder="johndoe" />
+                            <input type="text" class="form-input w-full" @bind="CreateRequest.Username" required placeholder="johndoe" autocomplete="off" />
                         </div>
                     }
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
                         @if (IsEditMode)
                         {
-                            <input type="email" class="form-input w-full" @bind="UpdateRequest.Email" required placeholder="user@example.com" />
+                            <input type="email" class="form-input w-full" @bind="UpdateRequest.Email" required placeholder="user@example.com" autocomplete="off" />
                         }
                         else
                         {
-                            <input type="email" class="form-input w-full" @bind="CreateRequest.Email" required placeholder="user@example.com" />
+                            <input type="email" class="form-input w-full" @bind="CreateRequest.Email" required placeholder="user@example.com" autocomplete="off" />
                         }
                     </div>
                     @if (!IsEditMode)
                     {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                            <input type="password" class="form-input w-full" @bind="CreateRequest.PlainPassword" required placeholder="••••••••" />
+                            <input type="password" class="form-input w-full" @bind="CreateRequest.PlainPassword" required placeholder="••••••••" autocomplete="new-password" />
                         </div>
                     }
                     else
                     {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password (leave blank to keep current)</label>
-                            <input type="password" class="form-input w-full" @bind="UpdateRequest.PlainPassword" placeholder="••••••••" />
+                            <input type="password" class="form-input w-full" @bind="UpdateRequest.PlainPassword" placeholder="••••••••" autocomplete="new-password" />
                         </div>
                     }
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
                         <select class="form-input w-full" value="@SelectedRole" @onchange="OnRoleChanged">
-                            @foreach (var role in Enum.GetValues<UserRole>())
+                            @foreach (var role in AvailableRoles)
                             {
-                                <option value="@role">@role</option>
+                                <option value="@role">@GetRoleLabel(role)</option>
                             }
                         </select>
                     </div>
@@ -245,7 +248,7 @@
                         {
                             <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
                         }
-                        @(IsEditMode ? "Save Changes" : "Send Invitation")
+                        @(IsEditMode ? "Save Changes" : "Create User")
                     </button>
                 </div>
             </form>
@@ -267,6 +270,25 @@
     private bool _isSearching = false;
     private bool isGridView = true;
     private CancellationTokenSource? _searchCts;
+
+    // Caller's role and context
+    private string CallerRole = "";
+    private Guid? CallerMerchantId;
+    private Guid? CallerBranchId;
+
+    // Available roles based on caller's role
+    private IEnumerable<UserRole> AvailableRoles => CallerRole switch
+    {
+        "Admin" => Enum.GetValues<UserRole>(),
+        "MerchantAdmin" => new[] { UserRole.Staff, UserRole.Customer },
+        _ => new[] { UserRole.Customer }   // Staff can only create Customer
+    };
+
+    private static string GetRoleLabel(UserRole role) => role switch
+    {
+        UserRole.MerchantAdmin => "Merchant Admin",
+        _ => role.ToString()
+    };
 
     // Pagination
     private int CurrentPage = 1;
@@ -295,6 +317,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        CallerRole = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                     ?? user.FindFirst("role")?.Value
+                     ?? "";
+
+        var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
+        if (Guid.TryParse(merchantClaim, out var mId)) CallerMerchantId = mId;
+
+        var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
+        if (Guid.TryParse(branchClaim, out var bId)) CallerBranchId = bId;
+
         await LoadUsers();
     }
 
@@ -338,7 +372,12 @@
             var response = await UserService.GetAllUsersAsync(filter);
             if (response.IsSuccess && response.Data != null)
             {
-                UserList = response.Data.Data.ToList();
+                var data = response.Data.Data;
+                if (CallerRole == "Staff")
+                {
+                    data = data.Where(u => u.Role != "Admin" && u.Role != "MerchantAdmin").ToList();
+                }
+                UserList = data.ToList();
                 TotalPages = response.Data.TotalPages;
                 TotalRecords = response.Data.TotalRecords;
             }
@@ -360,7 +399,21 @@
     private void ShowInviteModal()
     {
         IsEditMode = false;
-        CreateRequest = new CreateUserRequest { Role = UserRole.Staff };
+        
+        // Determine default role
+        UserRole defaultRole = CallerRole switch
+        {
+            "Admin" => UserRole.Admin,
+            "MerchantAdmin" => UserRole.Staff,
+            _ => UserRole.Customer
+        };
+
+        CreateRequest = new CreateUserRequest 
+        { 
+            Role = defaultRole,
+            MerchantId = CallerMerchantId,
+            BranchId = CallerBranchId
+        };
         ShowModal = true;
     }
 

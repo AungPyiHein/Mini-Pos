@@ -6,6 +6,7 @@
 @using POS.Frontend.Models.Merchants
 @using POS.Frontend.Models.Inventory
 @using POS.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IProductService ProductService
 @inject ICategoryService CategoryService
 @inject ISaleService SaleService
@@ -13,6 +14,7 @@
 @inject ICustomerService CustomerService
 @inject IMerchantService MerchantService
 @inject POS.Frontend.Services.Inventory.IInventoryService InventoryService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="flex gap-4 h-[calc(100vh-7.5rem)]">
 
@@ -32,13 +34,24 @@
                     </div>
                 }
             </div>
-            <select class="form-input w-48 text-xs" value="@selectedBranchId" @onchange="HandleBranchChange">
-                <option value="">— Select Branch —</option>
-                @foreach (var br in BranchList)
-                {
-                    <option value="@br.Id">@br.Name</option>
-                }
-            </select>
+@if (!IsStaff)
+            {
+                <select class="form-input w-48 text-xs" value="@selectedBranchId" @onchange="HandleBranchChange">
+                    <option value="">— Select Branch —</option>
+                    @foreach (var br in BranchList)
+                    {
+                        <option value="@br.Id">@br.Name</option>
+                    }
+                </select>
+            }
+            else if (BranchList.Any() && selectedBranchId.HasValue)
+            {
+                var branchName = BranchList.FirstOrDefault(b => b.Id == selectedBranchId)?.Name ?? "My Branch";
+                <div class="form-input w-48 text-xs bg-gray-50 dark:bg-surface text-muted cursor-not-allowed flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                    @branchName
+                </div>
+            }
             <select class="form-input w-40 text-xs" value="@SelectedCategoryIdString" @onchange="HandleCategoryChange">
                 <option value="">All Categories</option>
                 @foreach (var cat in CategoryList)
@@ -202,6 +215,7 @@
     private bool isLoading = true;
     private bool isSearching = false;
     private CancellationTokenSource? _searchCts;
+    private bool IsStaff = false;
 
     private List<ProductsResponseDto> ProductList = new();
     private List<CategoryResponseDto> CategoryList = new();
@@ -230,6 +244,22 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                   ?? user.FindFirst("role")?.Value
+                   ?? "";
+        IsStaff = role == "Staff";
+
+        // If Staff, read their BranchId from claims and lock it
+        if (IsStaff)
+        {
+            var branchClaim = user.FindFirst("BranchId")?.Value
+                              ?? user.FindFirst("branchId")?.Value;
+            if (Guid.TryParse(branchClaim, out var staffBranch))
+                selectedBranchId = staffBranch;
+        }
+
         await Task.WhenAll(LoadCategories(), LoadProducts(), LoadBranches(), LoadCustomers());
     }
 
@@ -261,9 +291,14 @@
         if (response?.Data?.Data != null)
         {
             BranchList = response.Data.Data.ToList();
-            if (BranchList.Any())
+            // Staff: branch already locked from JWT claims - don't override
+            // Admin/MerchantAdmin: auto-select the first branch
+            if (!IsStaff && !selectedBranchId.HasValue && BranchList.Any())
             {
                 selectedBranchId = BranchList.First().Id;
+            }
+            if (selectedBranchId.HasValue)
+            {
                 await LoadInventoryForBranch();
             }
         }
