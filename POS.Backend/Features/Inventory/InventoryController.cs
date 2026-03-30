@@ -4,7 +4,7 @@ using POS.Backend.Features.Inventory;
 
 namespace POS.Backend.Features.Inventory
 {
-    //[Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+    [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
     [ApiController]
     [Route("api/[controller]")]
     public class InventoryController : ControllerBase
