@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using POS.data.Entities;
@@ -7,6 +7,10 @@ namespace POS.data.Data;
 
 public partial class AppDbContext : DbContext
 {
+    public AppDbContext()
+    {
+    }
+
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
@@ -30,7 +34,13 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<ProductImage> ProductImages { get; set; }
 
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+
     public virtual DbSet<User> Users { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=Mini_Pos;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,6 +52,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50);
 
             entity.HasOne(d => d.Merchant).WithMany(p => p.Branches)
                 .HasForeignKey(d => d.MerchantId)
@@ -103,10 +114,12 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__Merchant__3214EC0746EECA55");
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.ContactEmail).HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -156,6 +169,7 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__Products__3214EC075642A869");
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.Barcode).HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.Name).HasMaxLength(100);
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
@@ -187,6 +201,23 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_ProductImages_Products");
         });
 
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__RefreshT__3214EC075B9C24D3");
+
+            entity.HasIndex(e => e.Token, "UQ__RefreshT__1EB4F8171A6CD6EC").IsUnique();
+
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
+            entity.Property(e => e.Created).HasDefaultValueSql("(getutcdate())");
+            entity.Property(e => e.CreatedByIp).HasMaxLength(50);
+            entity.Property(e => e.ReasonRevoked).HasMaxLength(255);
+            entity.Property(e => e.ReplacedByToken).HasMaxLength(255);
+            entity.Property(e => e.RevokedByIp).HasMaxLength(50);
+            entity.Property(e => e.Token).HasMaxLength(255);
+
+            entity.HasOne(d => d.User).WithMany(p => p.RefreshTokens).HasForeignKey(d => d.UserId);
+        });
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Users__3214EC07F74487C8");
@@ -198,7 +229,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id).HasDefaultValueSql("(newsequentialid())");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.FullName).HasMaxLength(255);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50);
             entity.Property(e => e.Role).HasMaxLength(20);
             entity.Property(e => e.Username).HasMaxLength(50);
 
@@ -212,8 +246,6 @@ public partial class AppDbContext : DbContext
         });
 
         OnModelCreatingPartial(modelBuilder);
-
-        modelBuilder.Entity<Category>().HasQueryFilter(c => !c.IsDeleted);
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);

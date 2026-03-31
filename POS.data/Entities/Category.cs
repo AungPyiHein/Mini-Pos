@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace POS.data.Entities;
@@ -12,7 +12,6 @@ public partial class Category
     public string Name { get; set; } = null!;
 
     public string? Description { get; set; }
-    public bool IsDeleted { get; set; } = false;
 
     public DateTime CreatedAt { get; set; }
 

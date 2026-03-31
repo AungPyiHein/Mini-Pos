@@ -19,6 +19,8 @@ public partial class Branch
 
     public DateTime? DeletedAt { get; set; }
 
+    public string? PhoneNumber { get; set; }
+
     public virtual ICollection<BranchInventory> BranchInventories { get; set; } = new List<BranchInventory>();
 
     public virtual Merchant Merchant { get; set; } = null!;

@@ -23,6 +23,10 @@ public partial class Product
 
     public DateTime? DeletedAt { get; set; }
 
+    public string? Description { get; set; }
+
+    public string? Barcode { get; set; }
+
     public virtual ICollection<BranchInventory> BranchInventories { get; set; } = new List<BranchInventory>();
 
     public virtual Category Category { get; set; } = null!;

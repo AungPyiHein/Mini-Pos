@@ -21,6 +21,8 @@ namespace POS.Backend.Common
                 Id = Guid.NewGuid(),
                 Name = "Default Merchant",
                 ContactEmail = "admin@pos.com",
+                Address = "Default Merchant Address",
+                PhoneNumber = "09123456789",
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
@@ -32,6 +34,7 @@ namespace POS.Backend.Common
                 MerchantId = merchant.Id,
                 Name = "Main Branch",
                 Address = "Default City",
+                PhoneNumber = "09123456790",
                 CreatedAt = DateTime.UtcNow
             };
             context.Branches.Add(branch);
@@ -44,6 +47,9 @@ namespace POS.Backend.Common
                 BranchId = branch.Id,
                 Username = "admin",
                 Email = "admin@pos.com",
+                FullName = "System Admin",
+                PhoneNumber = "09123456791",
+                IsActive = true,
                 Role = UserRole.Admin.ToString(),
                 CreatedAt = DateTime.UtcNow
             };

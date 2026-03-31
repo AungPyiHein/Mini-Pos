@@ -9,12 +9,16 @@ namespace POS.Backend.Features.Merchants
     {
         public string Name { get; set; } = string.Empty;
         public string? ContactEmail { get; set; }
+        public string? Address { get; set; }
+        public string? PhoneNumber { get; set; }
     }
     public class MerchantResponseDto
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string ContactEmail { get; set; }
+        public string? Address { get; set; }
+        public string? PhoneNumber { get; set; }
         public bool isActive { get; set; }
         public int CategoryCount { get; set; }
         public int ProductCount { get; set; }
@@ -25,6 +29,8 @@ namespace POS.Backend.Features.Merchants
         public Guid Id { get; set; }
         public string? Name { get; set; }
         public string? ContactEmail { get; set; }
+        public string? Address { get; set; }
+        public string? PhoneNumber { get; set; }
         public bool? IsActive { get; set; }
     }
 
@@ -76,6 +82,8 @@ namespace POS.Backend.Features.Merchants
                     Id = m.Id,
                     Name = m.Name,
                     ContactEmail = m.ContactEmail,
+                    Address = m.Address,
+                    PhoneNumber = m.PhoneNumber,
                     isActive = m.IsActive,
                     CategoryCount = m.Categories.Count(c => c.DeletedAt == null),
                     ProductCount = m.Products.Count(p => p.DeletedAt == null)
@@ -99,6 +107,8 @@ namespace POS.Backend.Features.Merchants
                 Id = Guid.NewGuid(),
                 Name = request.Name,
                 ContactEmail = request.ContactEmail,
+                Address = request.Address,
+                PhoneNumber = request.PhoneNumber,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
@@ -127,6 +137,8 @@ namespace POS.Backend.Features.Merchants
                      Id = m.Id,
                      Name = m.Name,
                      ContactEmail = m.ContactEmail,
+                     Address = m.Address,
+                     PhoneNumber = m.PhoneNumber,
                      isActive = m.IsActive,
                      CategoryCount = m.Categories.Count(c => c.DeletedAt == null),
                      ProductCount = m.Products.Count(p => p.DeletedAt == null)
@@ -149,6 +161,12 @@ namespace POS.Backend.Features.Merchants
 
             if (!string.IsNullOrWhiteSpace(request.ContactEmail))
                 existingMerchant.ContactEmail = request.ContactEmail;
+
+            if (!string.IsNullOrWhiteSpace(request.Address))
+                existingMerchant.Address = request.Address;
+
+            if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+                existingMerchant.PhoneNumber = request.PhoneNumber;
 
             if (request.IsActive.HasValue)
                 existingMerchant.IsActive = request.IsActive.Value;

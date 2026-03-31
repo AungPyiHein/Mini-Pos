@@ -11,6 +11,8 @@ namespace POS.Backend.Features.User
     {
         public string Username { get; set; } = null!;
         public string Email { get; set; } = null!;
+        public string FullName { get; set; } = null!;
+        public string? PhoneNumber { get; set; }
         public string PlainPassword { get; set; } = null!;
         public UserRole Role { get; set; } 
         public Guid? MerchantId { get; set; }
@@ -19,6 +21,9 @@ namespace POS.Backend.Features.User
     public class UpdateUserRequest
     {
         public string? Email { get; set; }
+        public string? FullName { get; set; }
+        public string? PhoneNumber { get; set; }
+        public bool? IsActive { get; set; }
         public string? PlainPassword { get; set; }
         public UserRole? Role { get; set; }
     }
@@ -28,6 +33,8 @@ namespace POS.Backend.Features.User
         public Guid Id { get; set; }
         public string Username { get; set; } = null!;
         public string Email { get; set; } = null!;
+        public string? FullName { get; set; }
+        public string? PhoneNumber { get; set; }
         public string Role { get; set; } = null!;
         public bool IsActive { get; set; }
         public Guid? MerchantId { get; set; }
@@ -68,6 +75,9 @@ namespace POS.Backend.Features.User
                 Id = Guid.NewGuid(),
                 Username = request.Username,
                 Email = request.Email,
+                FullName = request.FullName,
+                PhoneNumber = request.PhoneNumber,
+                IsActive = true,
                 MerchantId = request.MerchantId,
                 BranchId = request.BranchId, 
                 Role = request.Role.ToString(), 
@@ -96,8 +106,10 @@ namespace POS.Backend.Features.User
                 Id = user.Id,
                 Username = user.Username,
                 Email = user.Email,
+                FullName = user.FullName,
+                PhoneNumber = user.PhoneNumber,
                 Role = user.Role,
-                IsActive = user.DeletedAt == null,
+                IsActive = user.IsActive,
                 MerchantId = user.MerchantId,
                 BranchId = user.BranchId,
                 MerchantName = user.Merchant?.Name,
@@ -135,8 +147,10 @@ namespace POS.Backend.Features.User
                     Id = u.Id,
                     Username = u.Username,
                     Email = u.Email,
+                    FullName = u.FullName,
+                    PhoneNumber = u.PhoneNumber,
                     Role = u.Role,
-                    IsActive = u.DeletedAt == null,
+                    IsActive = u.IsActive,
                     MerchantId = u.MerchantId,
                     BranchId = u.BranchId,
                     MerchantName = u.Merchant != null ? u.Merchant.Name : null,
@@ -158,6 +172,21 @@ namespace POS.Backend.Features.User
                 var emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != id && u.DeletedAt == null);
                 if (emailExists) return Result<bool>.Failure("Email already in use.");
                 user.Email = request.Email;
+            }
+
+            if (!string.IsNullOrEmpty(request.FullName))
+            {
+                user.FullName = request.FullName;
+            }
+
+            if (!string.IsNullOrEmpty(request.PhoneNumber))
+            {
+                user.PhoneNumber = request.PhoneNumber;
+            }
+
+            if (request.IsActive.HasValue)
+            {
+                user.IsActive = request.IsActive.Value;
             }
 
             if (request.Role.HasValue)

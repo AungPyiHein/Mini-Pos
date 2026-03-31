@@ -25,10 +25,17 @@ public partial class User
 
     public DateTime? DeletedAt { get; set; }
 
+    public string? FullName { get; set; }
+
+    public string? PhoneNumber { get; set; }
+
+    public bool IsActive { get; set; }
+
     public virtual Branch? Branch { get; set; }
 
     public virtual Merchant? Merchant { get; set; }
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
-}
 
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+}

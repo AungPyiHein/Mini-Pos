@@ -184,9 +184,25 @@
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
                         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">SKU</p>
-                        <p class="text-xl font-medium text-gray-800 dark:text-gray-200 mt-1 truncate">@(string.IsNullOrEmpty(selectedProduct.SKU) ? "N/A" : selectedProduct.SKU)</p>
+                        <p class="text-xl font-medium text-gray-800 dark:text-gray-200 mt-1 truncate">@(!string.IsNullOrEmpty(selectedProduct.SKU) ? selectedProduct.SKU : "N/A")</p>
                     </div>
                 </div>
+
+                @if (!string.IsNullOrEmpty(selectedProduct.Barcode))
+                {
+                    <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Barcode</p>
+                        <p class="text-sm font-mono text-gray-700 dark:text-gray-300">@selectedProduct.Barcode</p>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(selectedProduct.Description))
+                {
+                    <div>
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Description</h4>
+                        <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">@selectedProduct.Description</p>
+                    </div>
+                }
 
                 <!-- Inventory Section -->
                 <div>
@@ -276,6 +292,16 @@
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">SKU</label>
                             <input type="text" @bind="formModel.SKU" class="form-input bg-gray-50 focus:bg-white transition-colors" placeholder="SKU-001" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Barcode</label>
+                            <input type="text" @bind="formModel.Barcode" class="form-input bg-gray-50 focus:bg-white transition-colors" placeholder="Barcode" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
+                            <textarea @bind="formModel.Description" class="form-input bg-gray-50 focus:bg-white transition-colors" rows="2" placeholder="Product details..."></textarea>
                         </div>
                     </div>
                     <div>
@@ -406,6 +432,8 @@
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Barcode { get; set; }
         public decimal Price { get; set; }
         public string SKU { get; set; } = string.Empty;
         public Guid CategoryId { get; set; }
@@ -617,6 +645,8 @@
         {
             Id = p.Id,
             Name = p.Name,
+            Description = p.Description,
+            Barcode = p.Barcode,
             Price = p.Price,
             SKU = p.SKU,
             CategoryId = p.CategoryId,
@@ -644,6 +674,8 @@
             {
                 Id = formModel.Id,
                 Name = formModel.Name,
+                Description = formModel.Description,
+                Barcode = formModel.Barcode,
                 Price = formModel.Price,
                 SKU = formModel.SKU,
                 CategoryId = formModel.CategoryId
@@ -655,6 +687,8 @@
             var request = new CreateProductRequest
             {
                 Name = formModel.Name,
+                Description = formModel.Description,
+                Barcode = formModel.Barcode,
                 Price = formModel.Price,
                 SKU = formModel.SKU,
                 CategoryId = formModel.CategoryId,
@@ -671,6 +705,8 @@
             if (isEditMode && selectedProduct != null && selectedProduct.Id == formModel.Id)
             {
                 selectedProduct.Name = formModel.Name;
+                selectedProduct.Description = formModel.Description;
+                selectedProduct.Barcode = formModel.Barcode;
                 selectedProduct.Price = formModel.Price;
                 selectedProduct.SKU = formModel.SKU;
                 selectedProduct.CategoryId = formModel.CategoryId;

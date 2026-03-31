@@ -27,9 +27,9 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
 
-builder.Services.AddTransient<CustomAuthorizationMessageHandler>();
+builder.Services.AddTransient<TokenInterceptor>();
 builder.Services.AddHttpClient("BackendApi", client => client.BaseAddress = new Uri(backendUrl))
-    .AddHttpMessageHandler<CustomAuthorizationMessageHandler>();
+    .AddHttpMessageHandler<TokenInterceptor>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BackendApi"));
 
 builder.Services.AddScoped<IAuthService, AuthService>();

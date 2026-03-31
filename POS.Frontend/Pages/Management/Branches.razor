@@ -93,7 +93,13 @@
                                     <span class="font-medium text-gray-800 dark:text-gray-200">@b.Name</span>
                                 </div>
                             </td>
-                            <td class="text-muted">@b.Address</td>
+                            <td class="text-muted">
+                                @b.Address
+                                @if (!string.IsNullOrEmpty(b.PhoneNumber))
+                                {
+                                    <div class="text-xs italic mt-0.5 opacity-70">@b.PhoneNumber</div>
+                                }
+                            </td>
                             <td class="text-muted">@b.ActiveUsersCount</td>
                             <td>
                                 <div class="flex gap-1">
@@ -119,8 +125,12 @@
                         </div>
                         <div>
                             <h4 class="font-bold text-gray-900 dark:text-gray-100 text-lg mb-1 truncate">@b.Name</h4>
-                            <p class=\"text-sm text-gray-400 mb-3 truncate\">@b.Address</p>
-                            <p class=\"text-sm text-muted\">Active Users: <span class=\"font-medium text-accent\">@b.ActiveUsersCount</span></p>
+                            <p class="text-sm text-gray-400 mb-1 truncate">@b.Address</p>
+                            @if (!string.IsNullOrEmpty(b.PhoneNumber))
+                            {
+                                <p class="text-xs text-gray-500 mb-2 truncate">📞 @b.PhoneNumber</p>
+                            }
+                            <p class="text-sm text-muted">Active Users: <span class="font-medium text-accent">@b.ActiveUsersCount</span></p>
                         </div>
                         <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowEditModal(b)">Edit</button>
@@ -185,6 +195,10 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address</label>
                     <input type="text" class="form-input w-full" @bind="CurrentBranch.Address" placeholder="Physical Address" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                    <input type="text" class="form-input w-full" @bind="CurrentBranch.PhoneNumber" placeholder="e.g. +95 9..." />
                 </div>
             </div>
             <div class="px-6 py-4 bg-gray-50 dark:bg-surface flex justify-end gap-3">
@@ -325,6 +339,7 @@
         {
             Name = branch.Name,
             Address = branch.Address ?? "",
+            PhoneNumber = branch.PhoneNumber,
             MerchantId = Guid.Empty // MerchantId is not editable in this simple view
         };
         ShowModal = true;
@@ -350,7 +365,8 @@
                 {
                     Id = EditingId.Value,
                     Name = CurrentBranch.Name,
-                    Address = CurrentBranch.Address
+                    Address = CurrentBranch.Address,
+                    PhoneNumber = CurrentBranch.PhoneNumber
                 };
                 var response = await BranchService.UpdateBranchAsync(EditingId.Value, request);
                 success = response.IsSuccess;

@@ -90,9 +90,15 @@
                                     <span class="font-medium text-gray-800 dark:text-gray-200">@m.Name</span>
                                 </div>
                             </td>
-                            <td class="text-muted">@m.ContactEmail</td>
+                            <td class="text-muted">
+                                @m.ContactEmail
+                                @if (!string.IsNullOrEmpty(m.PhoneNumber))
+                                {
+                                    <div class="text-xs italic mt-0.5 opacity-70">@m.PhoneNumber</div>
+                                }
+                            </td>
                             <td>
-                                @if (m.isActive)
+                                @if (m.IsActive)
                                 { <span class="badge badge-success">Active</span> }
                                 else
                                 { <span class="badge badge-warning">Suspended</span> }
@@ -118,14 +124,18 @@
                             <div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-xl text-accent group-hover:bg-accent group-hover:text-white transition-colors">
                                 <span class="font-bold">@m.Name[0]</span>
                             </div>
-                            @if (m.isActive)
+                            @if (m.IsActive)
                             { <span class="badge badge-success">Active</span> }
                             else
                             { <span class="badge badge-warning">Suspended</span> }
                         </div>
                         <div>
                             <h4 class="font-bold text-gray-900 dark:text-gray-100 text-lg mb-1 truncate">@m.Name</h4>
-                            <p class="text-sm text-gray-400 mb-3 truncate">@m.ContactEmail</p>
+                            <p class="text-sm text-gray-400 mb-1 truncate">@m.ContactEmail</p>
+                            @if (!string.IsNullOrEmpty(m.PhoneNumber))
+                            {
+                                <p class="text-xs text-gray-500 mb-2 truncate">📞 @m.PhoneNumber</p>
+                            }
                         </div>
                         <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowEditModal(m)">Edit</button>
@@ -168,6 +178,14 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Email</label>
                     <input type="email" class="form-input w-full" @bind="CurrentMerchant.ContactEmail" placeholder="email@business.com" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address</label>
+                    <input type="text" class="form-input w-full" @bind="CurrentMerchant.Address" placeholder="Physical Address" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                    <input type="text" class="form-input w-full" @bind="CurrentMerchant.PhoneNumber" placeholder="e.g. +95 9..." />
                 </div>
                 @if (IsEditMode)
                 {
@@ -288,11 +306,13 @@
     {
         IsEditMode = true;
         EditingId = merchant.Id;
-        IsActive = merchant.isActive;
+        IsActive = merchant.IsActive;
         CurrentMerchant = new CreateMerchantRequest
         {
             Name = merchant.Name,
-            ContactEmail = merchant.ContactEmail
+            ContactEmail = merchant.ContactEmail,
+            Address = merchant.Address,
+            PhoneNumber = merchant.PhoneNumber
         };
         ShowModal = true;
     }
@@ -317,6 +337,8 @@
                     Id = EditingId.Value,
                     Name = CurrentMerchant.Name,
                     ContactEmail = CurrentMerchant.ContactEmail,
+                    Address = CurrentMerchant.Address,
+                    PhoneNumber = CurrentMerchant.PhoneNumber,
                     IsActive = IsActive
                 };
                 var response = await MerchantService.UpdateMerchantAsync(EditingId.Value, request);

@@ -27,6 +27,29 @@ namespace POS.Backend.Features.Auth
             return Ok(result.Value);
         }
 
+        [HttpPost("refresh-token")]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            var result = await _authServices.RefreshTokenAsync(request.Token);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.Error);
+            }
+            return Ok(result.Value);
+        }
+
+        [HttpPost("revoke-token")]
+        public async Task<IActionResult> RevokeToken([FromBody] RefreshTokenRequest request)
+        {
+            var result = await _authServices.RevokeTokenAsync(request.Token);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.Error);
+            }
+            return Ok(new { Message = "Token revoked successfully." });
+        }
+
         [HttpPost("logout")]
         public IActionResult Logout()
         {

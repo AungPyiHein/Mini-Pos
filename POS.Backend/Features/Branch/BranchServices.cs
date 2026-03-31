@@ -9,6 +9,7 @@ namespace POS.Backend.Features.Branch
     {
         public string Name { get; set; } = null!;
         public string Address { get; set; } = null!;
+        public string? PhoneNumber { get; set; }
         public Guid MerchantId { get; set; }
     }
     public class UpdateBranchRequest
@@ -16,12 +17,14 @@ namespace POS.Backend.Features.Branch
         public Guid Id { get; set; }
         public string Name { get; set; } = null!;
         public string Address { get; set; } = null!;
+        public string? PhoneNumber { get; set; }
     }
     public class BranchResponse
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = null!;
         public string? Address { get; set; }
+        public string? PhoneNumber { get; set; }
         public int ActiveUsersCount { get; set; }
     }
     public interface IBranchServices
@@ -61,6 +64,7 @@ namespace POS.Backend.Features.Branch
                 MerchantId = request.MerchantId,
                 Name = request.Name,
                 Address = request.Address,
+                PhoneNumber = request.PhoneNumber,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -80,6 +84,7 @@ namespace POS.Backend.Features.Branch
             if (nameExists) return Result.Failure("A branch with this name already exists.");
             branch.Name = request.Name;
             branch.Address = request.Address;
+            branch.PhoneNumber = request.PhoneNumber;
             branch.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return Result.Success();
@@ -106,6 +111,7 @@ namespace POS.Backend.Features.Branch
                     Id = b.Id,
                     Name = b.Name,
                     Address = b.Address,
+                    PhoneNumber = b.PhoneNumber,
                     ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
                 })
                 .ToListAsync();
@@ -123,6 +129,7 @@ namespace POS.Backend.Features.Branch
                     Id = b.Id,
                     Name = b.Name,
                     Address = b.Address,
+                    PhoneNumber = b.PhoneNumber,
                     ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
                 })
                 .FirstOrDefaultAsync();
@@ -162,6 +169,7 @@ namespace POS.Backend.Features.Branch
                     Id = b.Id,
                     Name = b.Name,
                     Address = b.Address,
+                    PhoneNumber = b.PhoneNumber,
                     ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
                 })
                 .ToListAsync();

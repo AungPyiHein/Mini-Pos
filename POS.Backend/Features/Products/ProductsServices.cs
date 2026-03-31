@@ -10,6 +10,8 @@ namespace POS.Backend.Features.Products
         public string Name { get; set; }
         public decimal Price { get; set; }
         public string SKU { get; set; }
+        public string? Description { get; set; }
+        public string? Barcode { get; set; }
         public string CategoryName { get; set; }
         public string CategoryDescription { get; set; }
         public string MerchantName { get; set; }
@@ -22,6 +24,8 @@ namespace POS.Backend.Features.Products
         public string Name { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public string SKU { get; set; }
+        public string? Description { get; set; }
+        public string? Barcode { get; set; }
         public Guid CategoryId { get; set; }
         public Guid MerchantId { get; set; }
     }
@@ -32,6 +36,8 @@ namespace POS.Backend.Features.Products
         public string? Name { get; set; }
         public decimal? Price { get; set; }
         public string? SKU { get; set; }
+        public string? Description { get; set; }
+        public string? Barcode { get; set; }
         public Guid? CategoryId { get; set; }
     }
     public interface IProductsServices
@@ -92,6 +98,8 @@ namespace POS.Backend.Features.Products
                 Name = p.Name,
                 Price = p.Price,
                 SKU = p.Sku,
+                Description = p.Description,
+                Barcode = p.Barcode,
                 CategoryName = p.Category?.Name ?? "No Category",
                 CategoryDescription = p.Category?.Description ?? "No Description",
                 CategoryId = p.CategoryId,
@@ -126,6 +134,8 @@ namespace POS.Backend.Features.Products
                     Name = p.Name,
                     Price = p.Price,
                     SKU = p.Sku,
+                    Description = p.Description,
+                    Barcode = p.Barcode,
                     CategoryName = p.Category != null ? p.Category.Name : "No Category",
                     CategoryDescription = p.Category != null ? p.Category.Description : "No Description",
                     CategoryId = p.CategoryId,
@@ -155,6 +165,8 @@ namespace POS.Backend.Features.Products
                 Name = request.Name,
                 Price = request.Price,
                 Sku = request.SKU,
+                Description = request.Description,
+                Barcode = request.Barcode,
                 CategoryId = request.CategoryId,
                 MerchantId = request.MerchantId,
                 CreatedAt = DateTime.UtcNow
@@ -178,6 +190,12 @@ namespace POS.Backend.Features.Products
 
             if (!string.IsNullOrWhiteSpace(request.SKU))
                 existingProduct.Sku = request.SKU;
+
+            if (!string.IsNullOrWhiteSpace(request.Description))
+                existingProduct.Description = request.Description;
+
+            if (!string.IsNullOrWhiteSpace(request.Barcode))
+                existingProduct.Barcode = request.Barcode;
 
             if (request.CategoryId.HasValue && request.CategoryId != Guid.Empty)
             {
