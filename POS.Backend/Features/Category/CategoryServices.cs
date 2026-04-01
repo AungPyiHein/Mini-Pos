@@ -82,7 +82,7 @@ namespace POS.Backend.Features.Category
                     Description = c.Description,
                     ProductCount = _context.Products.Count(p => p.CategoryId == c.Id && p.DeletedAt == null)
                 }).ToListAsync();
-                
+
             var pagedResponse = new PagedResponse<CategoryResponseDto>(category, totalRecords, filter.PageNumber, filter.PageSize);
             return Result<PagedResponse<CategoryResponseDto>>.Success(pagedResponse);
         }
@@ -167,9 +167,9 @@ namespace POS.Backend.Features.Category
         {
             var category = await _context.Categories
                 .IgnoreQueryFilters()
-                .Include(c=> c.Merchant)
+                .Include(c => c.Merchant)
                 .FirstOrDefaultAsync(c => c.Id == id);
-            
+
             if (category == null) return Result.Failure("Category not found.");
             if (category.DeletedAt == null) return Result.Failure("Category is not deleted.");
 

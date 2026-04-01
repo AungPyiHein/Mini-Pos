@@ -32,7 +32,7 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
 
-        try 
+        try
         {
             var claims = ParseClaimsFromJwt(token);
             var identity = new ClaimsIdentity(claims, "jwt", "sub", ClaimTypes.Role);
@@ -88,7 +88,7 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
                 }
             }
         }
-        
+
         return claims;
     }
 

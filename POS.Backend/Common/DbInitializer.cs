@@ -13,7 +13,7 @@ namespace POS.Backend.Common
 
             if (await context.Users.AnyAsync())
             {
-                return; 
+                return;
             }
 
             var merchant = new Merchant

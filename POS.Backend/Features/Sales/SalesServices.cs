@@ -175,7 +175,7 @@ namespace POS.Backend.Features.Sales
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
-                query = query.Where(o => (o.Customer != null && EF.Functions.Like(o.Customer.Name, $"%{filter.SearchTerm}%")) || 
+                query = query.Where(o => (o.Customer != null && EF.Functions.Like(o.Customer.Name, $"%{filter.SearchTerm}%")) ||
                                          EF.Functions.Like(o.Id.ToString(), $"%{filter.SearchTerm}%"));
             }
 

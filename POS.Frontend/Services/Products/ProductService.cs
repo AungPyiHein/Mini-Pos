@@ -33,25 +33,25 @@ public class ProductService : IProductService
         {
             url += $"&categoryId={filter.CategoryId}";
         }
-        
-        try 
+
+        try
         {
             var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<ProductsResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;
-            return response ?? new ApiResponse<PagedResponse<ProductsResponseDto>> 
-            { 
+            return response ?? new ApiResponse<PagedResponse<ProductsResponseDto>>
+            {
                 IsSuccess = false,
-                Message = "Error connecting to server", 
-                Data = new PagedResponse<ProductsResponseDto>(new List<ProductsResponseDto>(), 0, 1, 10) 
+                Message = "Error connecting to server",
+                Data = new PagedResponse<ProductsResponseDto>(new List<ProductsResponseDto>(), 0, 1, 10)
             };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<PagedResponse<ProductsResponseDto>> 
-            { 
+            return new ApiResponse<PagedResponse<ProductsResponseDto>>
+            {
                 IsSuccess = false,
-                Message = $"Error: {ex.Message}", 
-                Data = new PagedResponse<ProductsResponseDto>(new List<ProductsResponseDto>(), 0, 1, 10) 
+                Message = $"Error: {ex.Message}",
+                Data = new PagedResponse<ProductsResponseDto>(new List<ProductsResponseDto>(), 0, 1, 10)
             };
         }
     }

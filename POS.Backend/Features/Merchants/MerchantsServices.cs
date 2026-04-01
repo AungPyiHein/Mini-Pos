@@ -68,7 +68,7 @@ namespace POS.Backend.Features.Merchants
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
-                query = query.Where(m => EF.Functions.Like(m.Name, $"%{filter.SearchTerm}%") || 
+                query = query.Where(m => EF.Functions.Like(m.Name, $"%{filter.SearchTerm}%") ||
                                          EF.Functions.Like(m.ContactEmail, $"%{filter.SearchTerm}%"));
             }
 

@@ -44,7 +44,7 @@ namespace POS.Backend.Features.Products
     {
         Task<Result<PagedResponse<ProductsResponseDto>>> GetAllProductsAsync(PaginationFilter filter);
         Task<Result<ProductsResponseDto>> GetProductById(Guid id);
-        Task<Result<Guid>> CreateProductAsync(CreateProductRequest  request);
+        Task<Result<Guid>> CreateProductAsync(CreateProductRequest request);
         Task<Result> UpdateProductAsync(UpdateProductRequest request);
         Task<Result> DeleteProductAsync(Guid id);
     }
@@ -74,7 +74,7 @@ namespace POS.Backend.Features.Products
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
-                query = query.Where(p => EF.Functions.Like(p.Name, $"%{filter.SearchTerm}%") || 
+                query = query.Where(p => EF.Functions.Like(p.Name, $"%{filter.SearchTerm}%") ||
                                          EF.Functions.Like(p.Sku, $"%{filter.SearchTerm}%"));
             }
 
@@ -106,7 +106,7 @@ namespace POS.Backend.Features.Products
                 MerchantName = p.Merchant?.Name ?? "Unknown Merchant",
                 MerchantId = p.MerchantId
             }).ToList();
-            
+
             var pagedResponse = new PagedResponse<ProductsResponseDto>(response, totalRecords, filter.PageNumber, filter.PageSize);
             return Result<PagedResponse<ProductsResponseDto>>.Success(pagedResponse);
         }
@@ -214,9 +214,9 @@ namespace POS.Backend.Features.Products
             var existingProduct = await _context.Products.FirstOrDefaultAsync(p => p.Id == id && p.DeletedAt == null);
             if (existingProduct == null)
                 return Result.Failure("Product not found");
-            
+
             existingProduct.DeletedAt = DateTime.UtcNow;
-            
+
             await _context.SaveChangesAsync();
             return Result.Success();
         }

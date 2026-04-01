@@ -26,7 +26,7 @@ public class AuthService : IAuthService
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
     {
         var response = await _http.PostAsJsonAsync("/api/auth/login", request);
-        
+
         if (response.IsSuccessStatusCode)
         {
             var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
@@ -59,7 +59,7 @@ public class AuthService : IAuthService
         await _localStorage.RemoveItemAsync("authToken");
         await _localStorage.RemoveItemAsync("refreshToken");
         await _localStorage.RemoveItemAsync("token"); // Old key cleanup
-        
+
         ((CustomAuthStateProvider)_authStateProvider).NotifyUserLogout();
     }
 
@@ -84,9 +84,9 @@ public class AuthService : IAuthService
             if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(refreshToken))
                 return null;
 
-            var response = await _http.PostAsJsonAsync("/api/auth/refresh-token", new RefreshTokenRequest 
-            { 
-                Token = refreshToken 
+            var response = await _http.PostAsJsonAsync("/api/auth/refresh-token", new RefreshTokenRequest
+            {
+                Token = refreshToken
             });
 
             if (!response.IsSuccessStatusCode)
@@ -104,7 +104,7 @@ public class AuthService : IAuthService
 
             await _localStorage.SetItemAsync("authToken", result.Token);
             await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
-            
+
             return result.Token;
         }
         finally

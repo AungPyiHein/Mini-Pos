@@ -31,7 +31,7 @@ public class CustomerService : ICustomerService
             {
                 url += $"&searchTerm={Uri.EscapeDataString(filter.SearchTerm)}";
             }
-            
+
             var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<CustomerResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;
             return response ?? new ApiResponse<PagedResponse<CustomerResponseDto>> { IsSuccess = false, Message = "Error connecting to server" };

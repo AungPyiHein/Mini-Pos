@@ -14,7 +14,7 @@ namespace POS.Backend.Features.User
         public string FullName { get; set; } = null!;
         public string? PhoneNumber { get; set; }
         public string PlainPassword { get; set; } = null!;
-        public UserRole Role { get; set; } 
+        public UserRole Role { get; set; }
         public Guid? MerchantId { get; set; }
         public Guid? BranchId { get; set; }
     }
@@ -81,8 +81,8 @@ namespace POS.Backend.Features.User
                 PhoneNumber = request.PhoneNumber,
                 IsActive = true,
                 MerchantId = request.MerchantId,
-                BranchId = request.BranchId, 
-                Role = request.Role.ToString(), 
+                BranchId = request.BranchId,
+                Role = request.Role.ToString(),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -133,7 +133,7 @@ namespace POS.Backend.Features.User
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
-                query = query.Where(u => EF.Functions.Like(u.Username, $"%{filter.SearchTerm}%") || 
+                query = query.Where(u => EF.Functions.Like(u.Username, $"%{filter.SearchTerm}%") ||
                                          EF.Functions.Like(u.Email, $"%{filter.SearchTerm}%"));
             }
 

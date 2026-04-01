@@ -50,13 +50,13 @@ public class TokenInterceptor : DelegatingHandler
     private async Task<HttpRequestMessage> CloneRequestAsync(HttpRequestMessage request)
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri);
-        
+
         // Copy content
         if (request.Content != null)
         {
             var bytes = await request.Content.ReadAsByteArrayAsync();
             clone.Content = new ByteArrayContent(bytes);
-            
+
             if (request.Content.Headers != null)
             {
                 foreach (var h in request.Content.Headers)
@@ -65,9 +65,9 @@ public class TokenInterceptor : DelegatingHandler
                 }
             }
         }
-        
+
         clone.Version = request.Version;
-        
+
         foreach (var header in request.Headers)
         {
             clone.Headers.TryAddWithoutValidation(header.Key, header.Value);

@@ -31,23 +31,23 @@ public class CategoryService : ICategoryService
             {
                 url += $"&searchTerm={Uri.EscapeDataString(filter.SearchTerm)}";
             }
-            
+
             var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<CategoryResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;
-            return response ?? new ApiResponse<PagedResponse<CategoryResponseDto>> 
-            { 
+            return response ?? new ApiResponse<PagedResponse<CategoryResponseDto>>
+            {
                 IsSuccess = false,
-                Message = "Error connecting to server", 
-                Data = new PagedResponse<CategoryResponseDto>(new List<CategoryResponseDto>(), 0, 1, 10) 
+                Message = "Error connecting to server",
+                Data = new PagedResponse<CategoryResponseDto>(new List<CategoryResponseDto>(), 0, 1, 10)
             };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<PagedResponse<CategoryResponseDto>> 
-            { 
+            return new ApiResponse<PagedResponse<CategoryResponseDto>>
+            {
                 IsSuccess = false,
-                Message = $"Error: {ex.Message}", 
-                Data = new PagedResponse<CategoryResponseDto>(new List<CategoryResponseDto>(), 0, 1, 10) 
+                Message = $"Error: {ex.Message}",
+                Data = new PagedResponse<CategoryResponseDto>(new List<CategoryResponseDto>(), 0, 1, 10)
             };
         }
     }

@@ -9,7 +9,7 @@ namespace POS.Backend.Features.Auth
     {
         private readonly IAuthServices _authServices;
 
-         public AuthController(IAuthServices authServices)
+        public AuthController(IAuthServices authServices)
         {
             _authServices = authServices;
         }

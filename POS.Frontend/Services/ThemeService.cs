@@ -26,7 +26,7 @@ namespace POS.Frontend.Services
             ";
             await _jsRuntime.InvokeVoidAsync("eval", script);
         }
-        
+
         public async Task<bool> IsDarkModeAsync()
         {
             var script = "document.documentElement.classList.contains('dark')";

@@ -74,7 +74,7 @@ namespace POS.Backend.Features.Branch
             return Result<Guid>.Success(branch.Id);
         }
 
-       
+
         public async Task<Result> UpdateBranchAsync(UpdateBranchRequest request)
         {
             var branch = await _context.Branches.FirstOrDefaultAsync(b => b.Id == request.Id && b.DeletedAt == null);
@@ -97,7 +97,7 @@ namespace POS.Backend.Features.Branch
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
-                query = query.Where(b => EF.Functions.Like(b.Name, $"%{filter.SearchTerm}%") || 
+                query = query.Where(b => EF.Functions.Like(b.Name, $"%{filter.SearchTerm}%") ||
                                          EF.Functions.Like(b.Address, $"%{filter.SearchTerm}%"));
             }
 
@@ -133,7 +133,7 @@ namespace POS.Backend.Features.Branch
                     ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
                 })
                 .FirstOrDefaultAsync();
-            
+
             if (branch == null) return Result<BranchResponse>.Failure("Branch not found.");
             return Result<BranchResponse>.Success(branch);
         }
@@ -155,7 +155,7 @@ namespace POS.Backend.Features.Branch
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
-                query = query.Where(b => EF.Functions.Like(b.Name, $"%{filter.SearchTerm}%") || 
+                query = query.Where(b => EF.Functions.Like(b.Name, $"%{filter.SearchTerm}%") ||
                                          EF.Functions.Like(b.Address, $"%{filter.SearchTerm}%"));
             }
 

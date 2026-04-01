@@ -35,8 +35,8 @@ public class CurrentUserService : ICurrentUserService
         }
     }
 
-    public string Username => User?.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                              ?? User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value 
+    public string Username => User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
                               ?? string.Empty;
 
     public UserRole Role

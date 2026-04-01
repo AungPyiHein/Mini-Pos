@@ -10,8 +10,8 @@ namespace POS.Shared.Models
         public bool HasPreviousPage => PageNumber > 1;
         public bool HasNextPage => PageNumber < TotalPages;
 
-        public PagedResponse() 
-        { 
+        public PagedResponse()
+        {
             Data = new List<T>();
         }
 
