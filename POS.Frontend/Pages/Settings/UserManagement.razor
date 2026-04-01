@@ -3,10 +3,12 @@
 @layout MainLayout
 @using POS.Frontend.Services.Users
 @using POS.Frontend.Models.Users
+@using POS.Frontend.Models.Merchants
 @using POS.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject POS.Frontend.Services.Merchants.IBranchService BranchService
 
 <div class="space-y-5">
 
@@ -229,6 +231,10 @@
     <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <form @onsubmit="SaveUser">
+                <!-- Dummy inputs to thwart browser autofill -->
+                <input type="text" style="display:none" autocomplete="username" />
+                <input type="password" style="display:none" autocomplete="current-password" />
+                
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">@(IsEditMode ? "Edit User" : "Create New User")</h3>
                     <button type="button" @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors">
@@ -292,13 +298,26 @@
                     }
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
-                        <select class="form-input w-full" value="@SelectedRole" @onchange="OnRoleChanged">
+                        <select class="form-input w-full" @bind="SelectedRole">
                             @foreach (var role in AvailableRoles)
                             {
                                 <option value="@role">@GetRoleLabel(role)</option>
                             }
                         </select>
                     </div>
+                    @if (SelectedRole == UserRole.Staff && CallerRole == "MerchantAdmin")
+                    {
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assigned Branch</label>
+                            <select class="form-input w-full" value="@GetSelectedBranchId()" @onchange="OnBranchChanged">
+                                <option value="">— Select a Branch —</option>
+                                @foreach (var branch in BranchList)
+                                {
+                                    <option value="@branch.Id">@branch.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
                     @if (IsEditMode)
                     {
                         <div class="flex items-center gap-2">
@@ -324,6 +343,7 @@
 
 @code {
     private List<UserResponseDto> UserList = new();
+    private List<BranchResponseDto> BranchList = new();
     private CreateUserRequest CreateRequest = new();
     private UpdateUserRequest UpdateRequest = new();
     private Guid? EditingId;
@@ -346,7 +366,7 @@
     private IEnumerable<UserRole> AvailableRoles => CallerRole switch
     {
         "Admin" => Enum.GetValues<UserRole>(),
-        "MerchantAdmin" => new[] { UserRole.Staff, UserRole.Customer },
+        "MerchantAdmin" => new[] { UserRole.MerchantAdmin, UserRole.Staff, UserRole.Customer },
         _ => new[] { UserRole.Customer }   // Staff can only create Customer
     };
 
@@ -373,12 +393,16 @@
         }
     }
 
-    private void OnRoleChanged(ChangeEventArgs e)
+
+
+    private string GetSelectedBranchId() => IsEditMode ? UpdateRequest.BranchId?.ToString() ?? "" : CreateRequest.BranchId?.ToString() ?? "";
+    
+    private void OnBranchChanged(ChangeEventArgs e)
     {
-        if (Enum.TryParse<UserRole>(e.Value?.ToString(), out var role))
-        {
-            SelectedRole = role;
-        }
+        var val = e.Value?.ToString();
+        var guid = Guid.TryParse(val, out var g) ? (Guid?)g : null;
+        if (IsEditMode) UpdateRequest.BranchId = guid;
+        else CreateRequest.BranchId = guid;
     }
 
     protected override async Task OnInitializedAsync()
@@ -394,6 +418,15 @@
 
         var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
         if (Guid.TryParse(branchClaim, out var bId)) CallerBranchId = bId;
+
+        if (CallerRole == "MerchantAdmin")
+        {
+            var branchResp = await BranchService.GetAllBranchesAsync(new PaginationFilter { PageSize = 100 });
+            if (branchResp.IsSuccess && branchResp.Data?.Data != null)
+            {
+                BranchList = branchResp.Data.Data.ToList();
+            }
+        }
 
         await LoadUsers();
     }
@@ -493,6 +526,7 @@
             FullName = user.FullName,
             PhoneNumber = user.PhoneNumber,
             IsActive = user.IsActive,
+            BranchId = user.BranchId,
             Role = Enum.TryParse<UserRole>(user.Role, out var role) ? role : UserRole.Staff
         };
         ShowModal = true;

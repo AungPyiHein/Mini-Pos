@@ -26,6 +26,8 @@ namespace POS.Backend.Features.User
         public bool? IsActive { get; set; }
         public string? PlainPassword { get; set; }
         public UserRole? Role { get; set; }
+        public Guid? MerchantId { get; set; }
+        public Guid? BranchId { get; set; }
     }
 
     public class UserResponseDto
@@ -192,6 +194,16 @@ namespace POS.Backend.Features.User
             if (request.Role.HasValue)
             {
                 user.Role = request.Role.Value.ToString();
+            }
+
+            if (request.MerchantId.HasValue)
+            {
+                user.MerchantId = request.MerchantId.Value;
+            }
+
+            if (request.BranchId.HasValue)
+            {
+                user.BranchId = request.BranchId.Value;
             }
 
             if (!string.IsNullOrEmpty(request.PlainPassword))

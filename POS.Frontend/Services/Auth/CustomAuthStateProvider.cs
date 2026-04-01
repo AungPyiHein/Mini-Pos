@@ -17,18 +17,41 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         var token = await _localStorage.GetItemAsync<string>("authToken");
+        var refreshToken = await _localStorage.GetItemAsync<string>("refreshToken");
+
+        // Token Migration: If we have an auth token but no refresh token, it's an old session.
+        // Clear it to force a clean login with the new refresh token system.
+        if (!string.IsNullOrWhiteSpace(token) && string.IsNullOrWhiteSpace(refreshToken))
+        {
+            await _localStorage.RemoveItemAsync("authToken");
+            token = null;
+        }
 
         if (string.IsNullOrWhiteSpace(token))
         {
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
 
-        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwt")));
+        try 
+        {
+            var claims = ParseClaimsFromJwt(token);
+            var identity = new ClaimsIdentity(claims, "jwt", "sub", ClaimTypes.Role);
+            return new AuthenticationState(new ClaimsPrincipal(identity));
+        }
+        catch
+        {
+            // If token is invalid/corrupt, clear it
+            await _localStorage.RemoveItemAsync("authToken");
+            await _localStorage.RemoveItemAsync("refreshToken");
+            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+        }
     }
 
     public void NotifyUserAuthentication(string token)
     {
-        var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwt"));
+        var claims = ParseClaimsFromJwt(token);
+        var identity = new ClaimsIdentity(claims, "jwt", "sub", ClaimTypes.Role);
+        var authenticatedUser = new ClaimsPrincipal(identity);
         var authState = Task.FromResult(new AuthenticationState(authenticatedUser));
         NotifyAuthenticationStateChanged(authState);
     }

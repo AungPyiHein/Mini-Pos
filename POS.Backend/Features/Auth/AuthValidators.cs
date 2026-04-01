@@ -1,5 +1,4 @@
 using FluentValidation;
-using POS.Shared.Models.Auth;
 
 namespace POS.Backend.Features.Auth
 {

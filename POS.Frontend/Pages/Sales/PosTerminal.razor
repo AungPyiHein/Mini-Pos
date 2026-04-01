@@ -147,7 +147,10 @@
                         <div class="flex items-center gap-1.5">
                             <button class="w-5 h-5 rounded-md bg-gray-100 dark:bg-border/30 text-gray-600 dark:text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-200"
                                     @onclick="() => ChangeQty(item, -1)">−</button>
-                            <span class="text-xs font-semibold w-4 text-center">@item.Qty</span>
+                            <input type="number" 
+                                   class="w-10 h-6 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white text-xs font-semibold text-center border border-gray-300 dark:border-gray-600 focus:border-accent outline-none transition-colors" 
+                                   value="@item.Qty" 
+                                   @onchange="@((ChangeEventArgs e) => HandleQtyInputChange(item, e))" />
                             <button class="w-5 h-5 rounded-md bg-accent/10 text-accent text-xs font-bold flex items-center justify-center hover:bg-accent/20"
                                     @onclick="() => ChangeQty(item, 1)">+</button>
                         </div>
@@ -478,6 +481,29 @@
         }
         item.Qty += delta;
         if (item.Qty <= 0) CartItems.Remove(item);
+    }
+
+    private void HandleQtyInputChange(CartItem item, ChangeEventArgs e)
+    {
+        statusMessage = "";
+        isError = false;
+        if (int.TryParse(e.Value?.ToString(), out var newQty))
+        {
+            if (newQty <= 0)
+            {
+                CartItems.Remove(item);
+            }
+            else if (newQty > item.MaxStock)
+            {
+                item.Qty = item.MaxStock;
+                statusMessage = $"Maximum available quantity is {item.MaxStock}.";
+                isError = true;
+            }
+            else
+            {
+                item.Qty = newQty;
+            }
+        }
     }
 
     private void ClearCart() 

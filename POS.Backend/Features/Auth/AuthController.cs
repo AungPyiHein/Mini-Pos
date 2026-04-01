@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using POS.Backend.Features.Auth;
-using POS.Shared.Models.Auth;
 
 namespace POS.Backend.Features.Auth
 {
@@ -48,12 +47,6 @@ namespace POS.Backend.Features.Auth
                 return BadRequest(result.Error);
             }
             return Ok(new { Message = "Token revoked successfully." });
-        }
-
-        [HttpPost("logout")]
-        public IActionResult Logout()
-        {
-            return Ok(new { Message = "Logged out successfully." });
         }
     }
 }

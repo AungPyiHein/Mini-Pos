@@ -38,17 +38,53 @@ public class TokenInterceptor : DelegatingHandler
 
             if (!string.IsNullOrEmpty(newToken))
             {
-                // Clone the request if necessary, but for simple Bearer change we can just update header and retry
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", newToken);
-                
-                // We need to be careful with retrying if the content was already sent.
-                // For GET/DELETE it's fine. For POST/PUT with stream it's tricky.
-                // However, in Blazor Wasm content is usually buffered.
-                
-                return await base.SendAsync(request, cancellationToken);
+                var requestClone = await CloneRequestAsync(request);
+                requestClone.Headers.Authorization = new AuthenticationHeaderValue("Bearer", newToken);
+                return await base.SendAsync(requestClone, cancellationToken);
             }
         }
 
         return response;
+    }
+
+    private async Task<HttpRequestMessage> CloneRequestAsync(HttpRequestMessage request)
+    {
+        var clone = new HttpRequestMessage(request.Method, request.RequestUri);
+        
+        // Copy content
+        if (request.Content != null)
+        {
+            var bytes = await request.Content.ReadAsByteArrayAsync();
+            clone.Content = new ByteArrayContent(bytes);
+            
+            if (request.Content.Headers != null)
+            {
+                foreach (var h in request.Content.Headers)
+                {
+                    clone.Content.Headers.TryAddWithoutValidation(h.Key, h.Value);
+                }
+            }
+        }
+        
+        clone.Version = request.Version;
+        
+        foreach (var header in request.Headers)
+        {
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+#if NET5_0_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+        foreach (var prop in request.Options)
+        {
+            clone.Options.Set(new HttpRequestOptionsKey<object?>(prop.Key), prop.Value);
+        }
+#else
+        foreach (var prop in request.Properties)
+        {
+            clone.Properties.Add(prop.Key, prop.Value);
+        }
+#endif
+
+        return clone;
     }
 }

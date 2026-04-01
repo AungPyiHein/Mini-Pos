@@ -1,4 +1,4 @@
-namespace POS.Shared.Models.Auth;
+namespace POS.Shared.Models;
 
 public class LoginRequest
 {

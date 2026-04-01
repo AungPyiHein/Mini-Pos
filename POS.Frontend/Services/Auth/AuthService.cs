@@ -2,10 +2,14 @@ using System.Net.Http.Json;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using POS.Shared.Models;
-using POS.Shared.Models.Auth;
 
 namespace POS.Frontend.Services.Auth;
-
+public interface IAuthService
+{
+    Task<Result<AuthResponse>> LoginAsync(LoginRequest request);
+    Task LogoutAsync();
+    Task<string?> RefreshTokenAsync();
+}
 public class AuthService : IAuthService
 {
     private readonly HttpClient _http;
@@ -44,48 +48,68 @@ public class AuthService : IAuthService
         var refreshToken = await _localStorage.GetItemAsync<string>("refreshToken");
         if (!string.IsNullOrEmpty(refreshToken))
         {
-            await _http.PostAsJsonAsync("/api/auth/revoke-token", new RefreshTokenRequest { Token = refreshToken });
+            try
+            {
+                await _http.PostAsJsonAsync("/api/auth/revoke-token", new RefreshTokenRequest { Token = refreshToken });
+            }
+            catch { /* Ignore network errors on logout */ }
         }
 
+        // Clear all possible token keys
         await _localStorage.RemoveItemAsync("authToken");
         await _localStorage.RemoveItemAsync("refreshToken");
+        await _localStorage.RemoveItemAsync("token"); // Old key cleanup
+        
         ((CustomAuthStateProvider)_authStateProvider).NotifyUserLogout();
     }
 
-    public async Task<string?> RefreshTokenAsync()
+    private Task<string?>? _refreshTokenTask;
+
+    public Task<string?> RefreshTokenAsync()
     {
-        var token = await _localStorage.GetItemAsync<string>("authToken");
-        var refreshToken = await _localStorage.GetItemAsync<string>("refreshToken");
-
-        if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(refreshToken))
-            return null;
-
-        var response = await _http.PostAsJsonAsync("/api/auth/refresh-token", new RefreshTokenRequest 
-        { 
-            Token = refreshToken 
-        });
-
-        if (!response.IsSuccessStatusCode)
+        if (_refreshTokenTask == null)
         {
-            await LogoutAsync();
-            return null;
+            _refreshTokenTask = RefreshTokenInternalAsync();
         }
-
-        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
-        if (result == null || string.IsNullOrEmpty(result.Token))
-        {
-            await LogoutAsync();
-            return null;
-        }
-
-        await _localStorage.SetItemAsync("authToken", result.Token);
-        await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
-        
-        return result.Token;
+        return _refreshTokenTask;
     }
 
-    public async Task<string?> GetTokenAsync()
+    private async Task<string?> RefreshTokenInternalAsync()
     {
-        return await _localStorage.GetItemAsync<string>("authToken");
+        try
+        {
+            var token = await _localStorage.GetItemAsync<string>("authToken");
+            var refreshToken = await _localStorage.GetItemAsync<string>("refreshToken");
+
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(refreshToken))
+                return null;
+
+            var response = await _http.PostAsJsonAsync("/api/auth/refresh-token", new RefreshTokenRequest 
+            { 
+                Token = refreshToken 
+            });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                await LogoutAsync();
+                return null;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+            if (result == null || string.IsNullOrEmpty(result.Token))
+            {
+                await LogoutAsync();
+                return null;
+            }
+
+            await _localStorage.SetItemAsync("authToken", result.Token);
+            await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
+            
+            return result.Token;
+        }
+        finally
+        {
+            _refreshTokenTask = null; // Clear the task so future calls get a new refresh
+        }
     }
 }

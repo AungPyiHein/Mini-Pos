@@ -1,4 +1,5 @@
 @page "/login"
+@using POS.Shared.Models
 @attribute [AllowAnonymous]
 @layout EmptyLayout
 
@@ -110,7 +111,7 @@
     [Inject] NavigationManager Nav { get; set; } = default!;
     [Inject] POS.Frontend.Services.Auth.IAuthService AuthService { get; set; } = default!;
 
-    private POS.Shared.Models.Auth.LoginRequest loginRequest = new();
+    private LoginRequest loginRequest = new();
     private bool isLoading;
     private string? errorMessage;
 

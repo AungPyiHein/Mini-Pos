@@ -5,7 +5,6 @@ using Microsoft.IdentityModel.Tokens;
 using POS.Backend.Common;
 using POS.data.Data;
 using POS.data.Entities;
-using POS.Shared.Models.Auth;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;

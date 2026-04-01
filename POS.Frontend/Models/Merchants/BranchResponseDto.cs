@@ -9,6 +9,7 @@ public class BranchResponseDto
     public string? Address { get; set; }
     public string? PhoneNumber { get; set; }
     public int ActiveUsersCount { get; set; }
+    public Guid MerchantId { get; set; }
 }
 
 public class CreateBranchRequest

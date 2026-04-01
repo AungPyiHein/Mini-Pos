@@ -37,4 +37,6 @@ public class UpdateUserRequest
     public bool? IsActive { get; set; }
     public string? PlainPassword { get; set; }
     public UserRole? Role { get; set; }
+    public Guid? MerchantId { get; set; }
+    public Guid? BranchId { get; set; }
 }
