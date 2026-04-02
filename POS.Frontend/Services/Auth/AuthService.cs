@@ -1,25 +1,24 @@
 using System.Net.Http.Json;
-using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using POS.Shared.Models;
 
 namespace POS.Frontend.Services.Auth;
+
 public interface IAuthService
 {
     Task<Result<AuthResponse>> LoginAsync(LoginRequest request);
     Task LogoutAsync();
-    Task<string?> RefreshTokenAsync();
+    Task<bool> RefreshTokenAsync();
 }
+
 public class AuthService : IAuthService
 {
     private readonly HttpClient _http;
-    private readonly ILocalStorageService _localStorage;
     private readonly AuthenticationStateProvider _authStateProvider;
 
-    public AuthService(HttpClient http, ILocalStorageService localStorage, AuthenticationStateProvider authStateProvider)
+    public AuthService(HttpClient http, AuthenticationStateProvider authStateProvider)
     {
         _http = http;
-        _localStorage = localStorage;
         _authStateProvider = authStateProvider;
     }
 
@@ -30,11 +29,9 @@ public class AuthService : IAuthService
         if (response.IsSuccessStatusCode)
         {
             var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
-            if (result != null && !string.IsNullOrEmpty(result.Token))
+            if (result != null)
             {
-                await _localStorage.SetItemAsync("authToken", result.Token);
-                await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
-                ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result.Token);
+                ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result);
                 return Result<AuthResponse>.Success(result);
             }
         }
@@ -45,71 +42,48 @@ public class AuthService : IAuthService
 
     public async Task LogoutAsync()
     {
-        var refreshToken = await _localStorage.GetItemAsync<string>("refreshToken");
-        if (!string.IsNullOrEmpty(refreshToken))
+        try
         {
-            try
-            {
-                await _http.PostAsJsonAsync("/api/auth/revoke-token", new RefreshTokenRequest { Token = refreshToken });
-            }
-            catch { /* Ignore network errors on logout */ }
+            await _http.PostAsync("/api/auth/revoke-token", null);
         }
-
-        // Clear all possible token keys
-        await _localStorage.RemoveItemAsync("authToken");
-        await _localStorage.RemoveItemAsync("refreshToken");
-        await _localStorage.RemoveItemAsync("token"); // Old key cleanup
+        catch { /* Ignore network errors on logout */ }
 
         ((CustomAuthStateProvider)_authStateProvider).NotifyUserLogout();
     }
 
-    private Task<string?>? _refreshTokenTask;
+    private Task<bool>? _refreshTokenTask;
 
-    public Task<string?> RefreshTokenAsync()
+    public Task<bool> RefreshTokenAsync()
     {
-        if (_refreshTokenTask == null)
-        {
-            _refreshTokenTask = RefreshTokenInternalAsync();
-        }
+        _refreshTokenTask ??= RefreshTokenInternalAsync();
         return _refreshTokenTask;
     }
 
-    private async Task<string?> RefreshTokenInternalAsync()
+    private async Task<bool> RefreshTokenInternalAsync()
     {
         try
         {
-            var token = await _localStorage.GetItemAsync<string>("authToken");
-            var refreshToken = await _localStorage.GetItemAsync<string>("refreshToken");
-
-            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(refreshToken))
-                return null;
-
-            var response = await _http.PostAsJsonAsync("/api/auth/refresh-token", new RefreshTokenRequest
-            {
-                Token = refreshToken
-            });
+            var response = await _http.PostAsync("/api/auth/refresh-token", null);
 
             if (!response.IsSuccessStatusCode)
             {
                 await LogoutAsync();
-                return null;
+                return false;
             }
 
             var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
-            if (result == null || string.IsNullOrEmpty(result.Token))
+            if (result == null)
             {
                 await LogoutAsync();
-                return null;
+                return false;
             }
 
-            await _localStorage.SetItemAsync("authToken", result.Token);
-            await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
-
-            return result.Token;
+            ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result);
+            return true;
         }
         finally
         {
-            _refreshTokenTask = null; // Clear the task so future calls get a new refresh
+            _refreshTokenTask = null;
         }
     }
 }

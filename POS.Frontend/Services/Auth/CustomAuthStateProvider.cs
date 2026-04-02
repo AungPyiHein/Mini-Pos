@@ -1,104 +1,82 @@
 using System.Security.Claims;
-using System.Text.Json;
-using Blazored.LocalStorage;
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components.Authorization;
+using POS.Shared.Models;
 
 namespace POS.Frontend.Services.Auth;
 
 public class CustomAuthStateProvider : AuthenticationStateProvider
 {
-    private readonly ILocalStorageService _localStorage;
+    private readonly HttpClient _http;
+    private AuthenticationState _anonymous = new(new ClaimsPrincipal(new ClaimsIdentity()));
+    private AuthenticationState _currentState;
+    private bool _initialized = false;
 
-    public CustomAuthStateProvider(ILocalStorageService localStorage)
+    public CustomAuthStateProvider(HttpClient http)
     {
-        _localStorage = localStorage;
+        _http = http;
+        _currentState = _anonymous;
     }
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var token = await _localStorage.GetItemAsync<string>("authToken");
-        var refreshToken = await _localStorage.GetItemAsync<string>("refreshToken");
-
-        // Token Migration: If we have an auth token but no refresh token, it's an old session.
-        // Clear it to force a clean login with the new refresh token system.
-        if (!string.IsNullOrWhiteSpace(token) && string.IsNullOrWhiteSpace(refreshToken))
+        if (!_initialized)
         {
-            await _localStorage.RemoveItemAsync("authToken");
-            token = null;
+            _initialized = true;
+            await TryRestoreSessionAsync();
         }
+        return _currentState;
+    }
 
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-        }
-
+    private async Task TryRestoreSessionAsync()
+    {
         try
         {
-            var claims = ParseClaimsFromJwt(token);
-            var identity = new ClaimsIdentity(claims, "jwt", "sub", ClaimTypes.Role);
-            return new AuthenticationState(new ClaimsPrincipal(identity));
+            var response = await _http.GetAsync("/api/auth/me");
+            if (response.IsSuccessStatusCode)
+            {
+                var userInfo = await response.Content.ReadFromJsonAsync<AuthResponse>();
+                if (userInfo != null)
+                    SetAuthenticatedState(userInfo);
+            }
         }
         catch
         {
-            // If token is invalid/corrupt, clear it
-            await _localStorage.RemoveItemAsync("authToken");
-            await _localStorage.RemoveItemAsync("refreshToken");
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+            // No valid session — stay anonymous
         }
     }
 
-    public void NotifyUserAuthentication(string token)
+    public void NotifyUserAuthentication(AuthResponse userInfo)
     {
-        var claims = ParseClaimsFromJwt(token);
-        var identity = new ClaimsIdentity(claims, "jwt", "sub", ClaimTypes.Role);
-        var authenticatedUser = new ClaimsPrincipal(identity);
-        var authState = Task.FromResult(new AuthenticationState(authenticatedUser));
-        NotifyAuthenticationStateChanged(authState);
+        SetAuthenticatedState(userInfo);
+        NotifyAuthenticationStateChanged(Task.FromResult(_currentState));
     }
 
     public void NotifyUserLogout()
     {
-        var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
-        var authState = Task.FromResult(new AuthenticationState(anonymousUser));
-        NotifyAuthenticationStateChanged(authState);
+        _currentState = _anonymous;
+        NotifyAuthenticationStateChanged(Task.FromResult(_currentState));
     }
 
-    public static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
+    private void SetAuthenticatedState(AuthResponse userInfo)
     {
-        var payload = jwt.Split('.')[1];
-        var jsonBytes = ParseBase64WithoutPadding(payload);
-        var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
-
-        var claims = new List<Claim>();
-
-        if (keyValuePairs != null)
+        var claims = new List<Claim>
         {
-            foreach (var kvp in keyValuePairs)
-            {
-                if (kvp.Value is JsonElement element && element.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in element.EnumerateArray())
-                    {
-                        claims.Add(new Claim(kvp.Key, item.ToString()));
-                    }
-                }
-                else
-                {
-                    claims.Add(new Claim(kvp.Key, kvp.Value?.ToString() ?? ""));
-                }
-            }
-        }
+            new Claim(ClaimTypes.Name, userInfo.Username),
+            new Claim("sub", userInfo.Username),
+            new Claim(ClaimTypes.Role, userInfo.Role),
+        };
 
-        return claims;
-    }
+        if (userInfo.MerchantId.HasValue)
+            claims.Add(new Claim("MerchantId", userInfo.MerchantId.Value.ToString()));
 
-    private static byte[] ParseBase64WithoutPadding(string base64)
-    {
-        switch (base64.Length % 4)
-        {
-            case 2: base64 += "=="; break;
-            case 3: base64 += "="; break;
-        }
-        return Convert.FromBase64String(base64);
+        if (userInfo.UserId.HasValue)
+            claims.Add(new Claim("UserId", userInfo.UserId.Value.ToString()));
+
+        if (userInfo.BranchId.HasValue)
+            claims.Add(new Claim("BranchId", userInfo.BranchId.Value.ToString()));
+
+        var identity = new ClaimsIdentity(claims, "jwt", "sub", ClaimTypes.Role);
+        _currentState = new AuthenticationState(new ClaimsPrincipal(identity));
     }
 }

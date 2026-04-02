@@ -12,7 +12,6 @@ using POS.Frontend.Services.Users;
 using POS.Frontend.Services;
 
 using POS.Frontend.Services.Auth;
-using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -22,14 +21,17 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 var backendUrl = builder.Configuration.GetValue<string>("BackendUrl") ?? "https://localhost:60763";
 
 // Auth Setup
-builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
 
 builder.Services.AddTransient<TokenInterceptor>();
-builder.Services.AddHttpClient("BackendApi", client => client.BaseAddress = new Uri(backendUrl))
-    .AddHttpMessageHandler<TokenInterceptor>();
+builder.Services.AddHttpClient("BackendApi", client =>
+{
+    client.BaseAddress = new Uri(backendUrl);
+})
+.AddHttpMessageHandler<TokenInterceptor>();
+
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BackendApi"));
 
 builder.Services.AddScoped<IAuthService, AuthService>();

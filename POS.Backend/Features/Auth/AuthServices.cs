@@ -43,15 +43,11 @@ namespace POS.Backend.Features.Auth
                 .FirstOrDefaultAsync(u => u.Username == request.Username && u.DeletedAt == null);
 
             if (user == null)
-            {
                 return Result<AuthResponse>.Failure("Invalid username or password.");
-            }
 
             var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
             if (result == PasswordVerificationResult.Failed)
-            {
                 return Result<AuthResponse>.Failure("Invalid username or password.");
-            }
 
             var jwtToken = GenerateJwtToken(user);
             var refreshToken = GenerateRefreshToken(IpAddress());
@@ -59,14 +55,15 @@ namespace POS.Backend.Features.Auth
             user.RefreshTokens.Add(refreshToken);
             await _context.SaveChangesAsync();
 
+            SetAuthCookies(jwtToken, refreshToken.Token, refreshToken.Expires);
+
             return Result<AuthResponse>.Success(new AuthResponse
             {
-                Token = jwtToken,
-                RefreshToken = refreshToken.Token,
-                RefreshTokenExpiration = refreshToken.Expires,
                 Username = user.Username,
                 Role = user.Role,
-                MerchantId = user.MerchantId
+                UserId = user.Id,
+                MerchantId = user.MerchantId,
+                BranchId = user.BranchId
             });
         }
 
@@ -83,7 +80,6 @@ namespace POS.Backend.Features.Auth
             bool isActive = refreshToken.Revoked == null && !refreshToken.IsUsed && DateTime.UtcNow < refreshToken.Expires;
             if (!isActive) return Result<AuthResponse>.Failure("Token is not active.");
 
-            // Revoke current token and replace with a new one
             var newRefreshToken = GenerateRefreshToken(IpAddress());
             refreshToken.Revoked = DateTime.UtcNow;
             refreshToken.RevokedByIp = IpAddress();
@@ -94,15 +90,15 @@ namespace POS.Backend.Features.Auth
             await _context.SaveChangesAsync();
 
             var jwtToken = GenerateJwtToken(user);
+            SetAuthCookies(jwtToken, newRefreshToken.Token, newRefreshToken.Expires);
 
             return Result<AuthResponse>.Success(new AuthResponse
             {
-                Token = jwtToken,
-                RefreshToken = newRefreshToken.Token,
-                RefreshTokenExpiration = newRefreshToken.Expires,
                 Username = user.Username,
                 Role = user.Role,
-                MerchantId = user.MerchantId
+                UserId = user.Id,
+                MerchantId = user.MerchantId,
+                BranchId = user.BranchId
             });
         }
 
@@ -125,7 +121,43 @@ namespace POS.Backend.Features.Auth
 
             await _context.SaveChangesAsync();
 
+            ClearAuthCookies();
+
             return Result<bool>.Success(true);
+        }
+
+        private void SetAuthCookies(string jwtToken, string refreshToken, DateTime refreshExpires)
+        {
+            var http = _httpContextAccessor.HttpContext;
+            if (http == null) return;
+
+            var expiryMinutes = double.Parse(_configuration["Jwt:ExpiryInMinutes"] ?? "60");
+
+            http.Response.Cookies.Append("access_token", jwtToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(expiryMinutes)
+            });
+
+            http.Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = refreshExpires,
+                Path = "/api/auth"   // Scope refresh token to auth endpoints only
+            });
+        }
+
+        private void ClearAuthCookies()
+        {
+            var http = _httpContextAccessor.HttpContext;
+            if (http == null) return;
+
+            http.Response.Cookies.Delete("access_token");
+            http.Response.Cookies.Delete("refresh_token", new CookieOptions { Path = "/api/auth" });
         }
 
         private string GenerateJwtToken(POS.data.Entities.User user)
@@ -143,7 +175,7 @@ namespace POS.Backend.Features.Auth
                 new Claim("BranchId", user.BranchId?.ToString() ?? "")
             };
 
-            var expiryMinutes = double.Parse(_configuration["Jwt:ExpiryInMinutes"] ?? "1440");
+            var expiryMinutes = double.Parse(_configuration["Jwt:ExpiryInMinutes"] ?? "60");
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
@@ -179,6 +211,3 @@ namespace POS.Backend.Features.Auth
         }
     }
 }
-
-
-
