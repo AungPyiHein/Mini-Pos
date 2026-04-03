@@ -63,13 +63,9 @@ namespace POS.Backend.Features.Products
         {
             var query = _context.Products.AsNoTracking().Where(p => p.DeletedAt == null).AsQueryable();
 
-            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
             {
                 query = query.Where(p => p.MerchantId == _currentUser.MerchantId);
-            }
-            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
-            {
-                query = query.Where(p => p.BranchInventories.Any(bi => bi.BranchId == _currentUser.BranchId));
             }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -118,13 +114,9 @@ namespace POS.Backend.Features.Products
                 .Include(p => p.Merchant)
                 .Where(p => p.Id == id && p.DeletedAt == null);
 
-            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
             {
                 query = query.Where(p => p.MerchantId == _currentUser.MerchantId);
-            }
-            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
-            {
-                query = query.Where(p => p.BranchInventories.Any(bi => bi.BranchId == _currentUser.BranchId));
             }
 
             var product = await query
