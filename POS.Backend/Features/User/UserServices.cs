@@ -69,6 +69,23 @@ namespace POS.Backend.Features.User
 
         public async Task<Result<Guid>> CreateUserAsync(CreateUserRequest request)
         {
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                if (_currentUser.MerchantId.HasValue)
+                {
+                    request.MerchantId = _currentUser.MerchantId.Value;
+                }
+                else
+                {
+                    return Result<Guid>.Failure("Merchant ID is missing from user claims.");
+                }
+
+                if (_currentUser.Role == POS.Shared.Models.UserRole.Staff && _currentUser.BranchId.HasValue)
+                {
+                    request.BranchId = _currentUser.BranchId.Value;
+                }
+            }
+
             var userExists = await _context.Users.AnyAsync(u => (u.Username == request.Username || u.Email == request.Email) && u.DeletedAt == null);
             if (userExists) return Result<Guid>.Failure("Username or Email already exists.");
 
@@ -220,6 +237,15 @@ namespace POS.Backend.Features.User
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && u.DeletedAt == null);
             if (user == null) return Result<bool>.Failure("User not found.");
+
+            if (user.Role == POS.Shared.Models.UserRole.MerchantAdmin.ToString())
+            {
+                var activeAdminsCount = await _context.Users.CountAsync(u => u.MerchantId == user.MerchantId && u.Role == POS.Shared.Models.UserRole.MerchantAdmin.ToString() && u.DeletedAt == null && u.Id != id);
+                if (activeAdminsCount == 0)
+                {
+                    return Result<bool>.Failure("Cannot delete this user. Every merchant must have at least one active Merchant Admin.");
+                }
+            }
 
             user.DeletedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();

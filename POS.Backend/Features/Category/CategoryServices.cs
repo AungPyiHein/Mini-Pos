@@ -109,6 +109,18 @@ namespace POS.Backend.Features.Category
 
         public async Task<Result<Guid>> CreateCategoryAsync(CreateCategoryRequest request)
         {
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                if (_currentUser.MerchantId.HasValue)
+                {
+                    request.MerchantId = _currentUser.MerchantId.Value;
+                }
+                else
+                {
+                    return Result<Guid>.Failure("Merchant ID is missing from user claims.");
+                }
+            }
+
             var merchantExists = await _context.Merchants.AnyAsync(m => m.Id == request.MerchantId && m.DeletedAt == null);
             if (!merchantExists)
             {

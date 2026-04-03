@@ -104,7 +104,7 @@
                             <td>
                                 <div class="flex gap-1">
                                     <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowEditModal(b)">Edit</button>
-                                    <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => DeleteBranch(b.Id)">Archive</button>
+                                    <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => ShowArchiveConfirm(b.Id, b.Name)">Archive</button>
                                 </div>
                             </td>
                         </tr>
@@ -134,7 +134,7 @@
                         </div>
                         <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowEditModal(b)">Edit</button>
-                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => DeleteBranch(b.Id)">Archive</button>
+                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowArchiveConfirm(b.Id, b.Name)">Archive</button>
                         </div>
                     </div>
                 }
@@ -215,6 +215,32 @@
     </div>
 }
 
+@if (ShowArchiveConfirmModal)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55] flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-orange-100 dark:border-orange-900/30 bg-orange-50 dark:bg-orange-900/10 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8" /></svg>
+                </div>
+                <h3 class="text-base font-bold text-orange-700 dark:text-orange-400">Archive Branch</h3>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-700 dark:text-gray-300">
+                    Are you sure you want to archive <span class="font-semibold">@ArchiveConfirmName</span>? Staff assigned to this branch will lose access.
+                </p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 dark:bg-surface border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+                <button @onclick="CloseArchiveConfirmModal" class="btn-ghost">Cancel</button>
+                <button @onclick="ConfirmArchive" class="btn-danger flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8" /></svg>
+                    Yes, Archive
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<BranchResponseDto> BranchList = new();
     private List<MerchantResponseDto> MerchantList = new();
@@ -224,6 +250,9 @@
     private bool IsSaving = false;
     private bool ShowModal = false;
     private bool IsEditMode = false;
+    private bool ShowArchiveConfirmModal = false;
+    private Guid? ArchiveConfirmId;
+    private string ArchiveConfirmName = "";
     private string ErrorMessage = "";
     private string searchTerm = string.Empty;
     private bool IsSearching = false;
@@ -389,7 +418,29 @@
         }
     }
 
-    private async Task DeleteBranch(Guid id)
+    private void ShowArchiveConfirm(Guid id, string name)
+    {
+        ArchiveConfirmId = id;
+        ArchiveConfirmName = name;
+        ShowArchiveConfirmModal = true;
+    }
+
+    private void CloseArchiveConfirmModal()
+    {
+        ShowArchiveConfirmModal = false;
+        ArchiveConfirmId = null;
+    }
+
+    private async Task ConfirmArchive()
+    {
+        if (!ArchiveConfirmId.HasValue) return;
+        var id = ArchiveConfirmId.Value;
+        ShowArchiveConfirmModal = false;
+        ArchiveConfirmId = null;
+        await DeleteBranchInternal(id);
+    }
+
+    private async Task DeleteBranchInternal(Guid id)
     {
         var response = await BranchService.DeleteBranchAsync(id);
         if (response.IsSuccess)

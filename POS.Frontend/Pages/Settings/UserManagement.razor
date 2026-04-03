@@ -9,6 +9,7 @@
 @inject IUserService UserService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject POS.Frontend.Services.Merchants.IBranchService BranchService
+@inject POS.Frontend.Services.Merchants.IMerchantService MerchantService
 
 <div class="space-y-5">
 
@@ -22,6 +23,14 @@
             Create User
         </button>
     </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage) && !ShowModal)
+    {
+        <div class="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between">
+            <span class="text-red-700 text-sm">@ErrorMessage</span>
+            <button class="text-red-500 hover:text-red-700 font-bold" @onclick="@(() => ErrorMessage = "")">✕</button>
+        </div>
+    }
 
     <div class="card">
         <div class="card-header shrink-0 p-4 border-b border-gray-100 dark:border-gray-800">
@@ -85,15 +94,6 @@
                             </td>
                         </tr>
                     }
-                    else if (!string.IsNullOrEmpty(ErrorMessage))
-                    {
-                        <tr>
-                            <td colspan="4" class="text-center py-10 text-red-500">
-                                @ErrorMessage
-                                <button class="btn-secondary ml-2" @onclick="() => LoadUsers()">Retry</button>
-                            </td>
-                        </tr>
-                    }
                     else if (!UserList.Any())
                     {
                         <tr>
@@ -152,7 +152,7 @@
                                 <td>
                                     <div class="flex gap-1">
                                         <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowEditModal(u)">Edit</button>
-                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => DeleteUser(u.Id)">Revoke</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => ShowRevokeConfirm(u.Id, u.FullName ?? u.Username)">Revoke</button>
                                     </div>
                                 </td>
                             </tr>
@@ -205,7 +205,7 @@
                         </div>
                         <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowEditModal(u)">Edit</button>
-                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => DeleteUser(u.Id)">Revoke</button>
+                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowRevokeConfirm(u.Id, u.FullName ?? u.Username)">Revoke</button>
                         </div>
                     </div>
                 }
@@ -229,19 +229,20 @@
 @if (ShowModal)
 {
     <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <form @onsubmit="SaveUser">
+        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
+            <form @onsubmit="SaveUser" @onsubmit:preventDefault="true" class="flex flex-col overflow-hidden flex-1">
                 <!-- Dummy inputs to thwart browser autofill -->
                 <input type="text" style="display:none" autocomplete="username" />
                 <input type="password" style="display:none" autocomplete="current-password" />
                 
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">@(IsEditMode ? "Edit User" : "Create New User")</h3>
+                <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">@(IsEditMode ? "Edit User" : "Create New User")</h3>
                     <button type="button" @onclick="CloseModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
-                <div class="p-6 space-y-4">
+                
+                <div class="overflow-y-auto flex-1 p-6 space-y-4">
                     @if (!IsEditMode)
                     {
                         <div>
@@ -305,7 +306,20 @@
                             }
                         </select>
                     </div>
-                    @if (SelectedRole == UserRole.Staff && CallerRole == "MerchantAdmin")
+                    @if (CallerRole == "Admin" && (SelectedRole == UserRole.MerchantAdmin || SelectedRole == UserRole.Staff))
+                    {
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assigned Merchant</label>
+                            <select class="form-input w-full" value="@GetSelectedMerchantId()" @onchange="OnMerchantChanged">
+                                <option value="">— Select a Merchant —</option>
+                                @foreach (var merchant in MerchantList)
+                                {
+                                    <option value="@merchant.Id">@merchant.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    @if (SelectedRole == UserRole.Staff && (CallerRole == "MerchantAdmin" || (CallerRole == "Admin" && BranchList.Any())))
                     {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assigned Branch</label>
@@ -326,7 +340,15 @@
                         </div>
                     }
                 </div>
-                <div class="px-6 py-4 bg-gray-50 dark:bg-surface flex justify-end gap-3">
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="mx-6 mb-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-2">
+                        <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                        <span class="text-red-700 dark:text-red-400 text-sm flex-1">@ErrorMessage</span>
+                        <button type="button" class="text-red-400 hover:text-red-600 font-bold leading-none" @onclick="@(() => ErrorMessage = "")">✕</button>
+                    </div>
+                }
+                <div class="px-6 py-4 bg-gray-50 dark:bg-surface border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 shrink-0">
                     <button type="button" @onclick="CloseModal" class="btn-ghost">Cancel</button>
                     <button type="submit" class="btn-primary" disabled="@IsSaving">
                         @if (IsSaving)
@@ -341,9 +363,36 @@
     </div>
 }
 
+@if (ShowRevokeModal)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                </div>
+                <h3 class="text-base font-bold text-red-700 dark:text-red-400">Revoke Access</h3>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-700 dark:text-gray-300">
+                    Are you sure you want to revoke access for <span class="font-semibold">@RevokeTargetName</span>? This will remove their ability to log in.
+                </p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 dark:bg-surface border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+                <button @onclick="CloseRevokeModal" class="btn-ghost">Cancel</button>
+                <button @onclick="ConfirmRevoke" class="btn-danger flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                    Yes, Revoke
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<UserResponseDto> UserList = new();
     private List<BranchResponseDto> BranchList = new();
+    private List<MerchantResponseDto> MerchantList = new();
     private CreateUserRequest CreateRequest = new();
     private UpdateUserRequest UpdateRequest = new();
     private Guid? EditingId;
@@ -351,6 +400,9 @@
     private bool IsSaving = false;
     private bool ShowModal = false;
     private bool IsEditMode = false;
+    private bool ShowRevokeModal = false;
+    private Guid? RevokeTargetId;
+    private string RevokeTargetName = "";
     private string ErrorMessage = "";
     private string _searchTerm = "";
     private bool _isSearching = false;
@@ -390,6 +442,14 @@
         {
             if (IsEditMode) UpdateRequest.Role = value;
             else CreateRequest.Role = value;
+
+            // When Admin switches role away from Staff, clear branch list
+            if (CallerRole == "Admin" && value != UserRole.Staff)
+            {
+                BranchList = new();
+                if (IsEditMode) UpdateRequest.BranchId = null;
+                else CreateRequest.BranchId = null;
+            }
         }
     }
 
@@ -403,6 +463,37 @@
         var guid = Guid.TryParse(val, out var g) ? (Guid?)g : null;
         if (IsEditMode) UpdateRequest.BranchId = guid;
         else CreateRequest.BranchId = guid;
+    }
+
+    private string GetSelectedMerchantId() => IsEditMode ? UpdateRequest.MerchantId?.ToString() ?? "" : CreateRequest.MerchantId?.ToString() ?? "";
+    
+    private async Task OnMerchantChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        var guid = Guid.TryParse(val, out var g) ? (Guid?)g : null;
+        if (IsEditMode) UpdateRequest.MerchantId = guid;
+        else CreateRequest.MerchantId = guid;
+
+        // For Admin creating Staff: load branches for selected merchant
+        if (CallerRole == "Admin" && SelectedRole == UserRole.Staff && guid.HasValue)
+        {
+            BranchList = new();
+            if (IsEditMode) UpdateRequest.BranchId = null;
+            else CreateRequest.BranchId = null;
+
+            var branchResp = await BranchService.GetBranchesByMerchantIdAsync(guid.Value, new PaginationFilter { PageSize = 200 });
+            if (branchResp.IsSuccess && branchResp.Data?.Data != null)
+            {
+                BranchList = branchResp.Data.Data.ToList();
+            }
+        }
+        else if (CallerRole == "Admin" && SelectedRole != UserRole.Staff)
+        {
+            // Clear branch when not Staff
+            BranchList = new();
+            if (IsEditMode) UpdateRequest.BranchId = null;
+            else CreateRequest.BranchId = null;
+        }
     }
 
     protected override async Task OnInitializedAsync()
@@ -425,6 +516,14 @@
             if (branchResp.IsSuccess && branchResp.Data?.Data != null)
             {
                 BranchList = branchResp.Data.Data.ToList();
+            }
+        }
+        else if (CallerRole == "Admin")
+        {
+            var merchantResp = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 100 });
+            if (merchantResp.IsSuccess && merchantResp.Data?.Data != null)
+            {
+                MerchantList = merchantResp.Data.Data.ToList();
             }
         }
 
@@ -497,6 +596,7 @@
 
     private void ShowInviteModal()
     {
+        ErrorMessage = "";
         IsEditMode = false;
         
         // Determine default role
@@ -518,6 +618,7 @@
 
     private void ShowEditModal(UserResponseDto user)
     {
+        ErrorMessage = "";
         IsEditMode = true;
         EditingId = user.Id;
         UpdateRequest = new UpdateUserRequest
@@ -539,19 +640,23 @@
 
     private async Task SaveUser()
     {
+        ErrorMessage = "";
         IsSaving = true;
         try
         {
             bool isSuccess;
+            string message = "";
             if (IsEditMode && EditingId.HasValue)
             {
                 var response = await UserService.UpdateUserAsync(EditingId.Value, UpdateRequest);
                 isSuccess = response.IsSuccess;
+                message = response.Message;
             }
             else
             {
                 var response = await UserService.CreateUserAsync(CreateRequest);
                 isSuccess = response.IsSuccess;
+                message = response.Message;
             }
 
             if (isSuccess)
@@ -561,8 +666,12 @@
             }
             else
             {
-                // Handle error
+                ErrorMessage = message;
             }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "An unexpected error occurred: " + ex.Message;
         }
         finally
         {
@@ -570,12 +679,33 @@
         }
     }
 
-    private async Task DeleteUser(Guid id)
+    private void ShowRevokeConfirm(Guid id, string name)
     {
-        var response = await UserService.DeleteUserAsync(id);
+        RevokeTargetId = id;
+        RevokeTargetName = name;
+        ShowRevokeModal = true;
+    }
+
+    private void CloseRevokeModal()
+    {
+        ShowRevokeModal = false;
+        RevokeTargetId = null;
+    }
+
+    private async Task ConfirmRevoke()
+    {
+        if (!RevokeTargetId.HasValue) return;
+        ShowRevokeModal = false;
+        ErrorMessage = "";
+        var response = await UserService.DeleteUserAsync(RevokeTargetId.Value);
+        RevokeTargetId = null;
         if (response.IsSuccess)
         {
             await LoadUsers();
+        }
+        else
+        {
+            ErrorMessage = response.Message;
         }
     }
 }

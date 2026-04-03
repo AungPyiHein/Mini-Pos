@@ -106,7 +106,7 @@
                             <td>
                                 <div class="flex gap-1">
                                     <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowEditModal(m)">Edit</button>
-                                    <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => DeleteMerchant(m.Id)">Delete</button>
+                                    <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => ShowDeleteConfirm(m.Id, m.Name)">Delete</button>
                                 </div>
                             </td>
                         </tr>
@@ -139,7 +139,7 @@
                         </div>
                         <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowEditModal(m)">Edit</button>
-                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => DeleteMerchant(m.Id)">Delete</button>
+                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowDeleteConfirm(m.Id, m.Name)">Delete</button>
                         </div>
                     </div>
                 }
@@ -209,6 +209,57 @@
     </div>
 }
 
+@if (ShowDeleteConfirmModal)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55] flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </div>
+                <h3 class="text-base font-bold text-red-700 dark:text-red-400">Delete Merchant</h3>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-700 dark:text-gray-300">
+                    Are you sure you want to delete <span class="font-semibold">@DeleteConfirmName</span>? This action cannot be undone.
+                </p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 dark:bg-surface border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+                <button @onclick="CloseDeleteConfirmModal" class="btn-ghost">Cancel</button>
+                <button @onclick="ConfirmDelete" class="btn-danger flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowForceDeleteModal)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-red-500">
+            <div class="px-6 py-4 border-b border-red-100 dark:border-red-900/30 flex items-center justify-between bg-red-50 dark:bg-red-900/10">
+                <h3 class="text-lg font-bold text-red-600 dark:text-red-400">Warning: Active Dependencies Found</h3>
+                <button @onclick="CloseForceDeleteModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">@ForceDeleteWarningMessage</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Are you absolutely sure you want to proceed? This will forcefully delete the merchant and cascade the deletion to all associated records. This action cannot be undone.</p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 dark:bg-surface flex justify-end gap-3 flex-row-reverse border-t border-gray-100">
+                <button @onclick="ConfirmForceDelete" class="btn-danger flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    Force Delete All
+                </button>
+                <button @onclick="CloseForceDeleteModal" class="btn-ghost">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<MerchantResponseDto> MerchantList = new();
     private CreateMerchantRequest CurrentMerchant = new();
@@ -217,6 +268,12 @@
     private bool IsLoading = true;
     private bool IsSaving = false;
     private bool ShowModal = false;
+    private bool ShowDeleteConfirmModal = false;
+    private Guid? DeleteConfirmId;
+    private string DeleteConfirmName = "";
+    private bool ShowForceDeleteModal = false;
+    private Guid? ForceDeleteMerchantId;
+    private string ForceDeleteWarningMessage = "";
     private bool IsEditMode = false;
     private string ErrorMessage = "";
     private string searchTerm = string.Empty;
@@ -362,13 +419,69 @@
         }
     }
 
+    private void ShowDeleteConfirm(Guid id, string name)
+    {
+        DeleteConfirmId = id;
+        DeleteConfirmName = name;
+        ShowDeleteConfirmModal = true;
+    }
+
+    private void CloseDeleteConfirmModal()
+    {
+        ShowDeleteConfirmModal = false;
+        DeleteConfirmId = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (!DeleteConfirmId.HasValue) return;
+        var id = DeleteConfirmId.Value;
+        ShowDeleteConfirmModal = false;
+        DeleteConfirmId = null;
+        await DeleteMerchant(id);
+    }
+
     private async Task DeleteMerchant(Guid id)
     {
-        // In a real app, use a better confirmation dialog
         var response = await MerchantService.DeleteMerchantAsync(id);
         if (response.IsSuccess)
         {
             await LoadMerchants();
         }
+        else if (response.Message != null && response.Message.StartsWith("DependenciesExist:"))
+        {
+            ForceDeleteMerchantId = id;
+            ForceDeleteWarningMessage = response.Message.Substring("DependenciesExist:".Length);
+            ShowForceDeleteModal = true;
+        }
+        else
+        {
+            ErrorMessage = response.Message ?? "Error deleting merchant";
+        }
+    }
+
+    private async Task ConfirmForceDelete()
+    {
+        if (ForceDeleteMerchantId.HasValue)
+        {
+            var response = await MerchantService.DeleteMerchantAsync(ForceDeleteMerchantId.Value, true);
+            ShowForceDeleteModal = false;
+            ForceDeleteMerchantId = null;
+            
+            if (response.IsSuccess)
+            {
+                await LoadMerchants();
+            }
+            else
+            {
+                ErrorMessage = response.Message ?? "Error force deleting merchant";
+            }
+        }
+    }
+
+    private void CloseForceDeleteModal()
+    {
+        ShowForceDeleteModal = false;
+        ForceDeleteMerchantId = null;
     }
 }
