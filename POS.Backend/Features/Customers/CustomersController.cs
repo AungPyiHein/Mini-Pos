@@ -17,6 +17,13 @@ namespace POS.Backend.Features.Customers
             _customerServices = customerServices;
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetCustomers([FromQuery] PaginationFilter filter)
+        {
+            var result = await _customerServices.GetCustomersAsync(Guid.Empty, filter);
+            return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Customers retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
+        }
+
         [HttpGet("merchant/{merchantId}")]
         public async Task<IActionResult> GetCustomers(Guid merchantId, [FromQuery] PaginationFilter filter)
         {

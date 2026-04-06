@@ -118,7 +118,13 @@ namespace POS.Backend.Features.User
                 .Include(u => u.Branch)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == id && u.DeletedAt == null);
+
             if (user == null) return Result<UserResponseDto>.Failure("User not found.");
+
+            if (_currentUser.Role != POS.Shared.Models.UserRole.Admin && user.MerchantId != _currentUser.MerchantId)
+            {
+                return Result<UserResponseDto>.Failure("You do not have permission to view this user.");
+            }
 
             return Result<UserResponseDto>.Success(new UserResponseDto
             {
@@ -143,7 +149,7 @@ namespace POS.Backend.Features.User
                 .Where(u => u.DeletedAt == null)
                 .AsQueryable();
 
-            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
             {
                 query = query.Where(u => u.MerchantId == _currentUser.MerchantId);
             }
@@ -185,6 +191,11 @@ namespace POS.Backend.Features.User
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && u.DeletedAt == null);
             if (user == null) return Result<bool>.Failure("User not found.");
+
+            if (_currentUser.Role != POS.Shared.Models.UserRole.Admin && user.MerchantId != _currentUser.MerchantId)
+            {
+                return Result<bool>.Failure("You do not have permission to update this user.");
+            }
 
             if (!string.IsNullOrEmpty(request.Email) && request.Email != user.Email)
             {
@@ -237,6 +248,11 @@ namespace POS.Backend.Features.User
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && u.DeletedAt == null);
             if (user == null) return Result<bool>.Failure("User not found.");
+
+            if (_currentUser.Role != POS.Shared.Models.UserRole.Admin && user.MerchantId != _currentUser.MerchantId)
+            {
+                return Result<bool>.Failure("You do not have permission to delete this user.");
+            }
 
             if (user.Role == POS.Shared.Models.UserRole.MerchantAdmin.ToString())
             {

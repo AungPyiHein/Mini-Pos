@@ -4,6 +4,7 @@
 @using POS.Frontend.Models.Sales
 @using POS.Shared.Models
 @using POS.Frontend.Services.Merchants
+@using POS.Frontend.Models.Merchants
 @inject ICustomerService CustomerService
 @inject IMerchantService MerchantService
 @inject ISaleService SaleService
@@ -36,6 +37,21 @@
                         }
                     </div>
                     <span class="text-xs text-muted">@TotalRecords total</span>
+
+                    @if (UserRole == "Admin")
+                    {
+                        <div class="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-2 hidden sm:block"></div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-medium text-gray-500">Merchant:</span>
+                            <select class="form-input py-1 text-xs min-w-[150px]" @bind="SelectedMerchantId">
+                                <option value="@Guid.Empty">All Merchants</option>
+                                @foreach (var m in MerchantList)
+                                {
+                                    <option value="@m.Id">@m.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
                 </div>
 
                 <!-- View Toggle -->
@@ -60,6 +76,10 @@
                 <thead>
                     <tr>
                         <th>Name</th>
+                        @if (UserRole == "Admin")
+                        {
+                            <th>Merchant</th>
+                        }
                         <th>Phone</th>
                         <th>Email</th>
                         <th>Total Spent</th>
@@ -118,6 +138,14 @@
                                         <span class="font-medium text-gray-800 dark:text-gray-200">@c.Name</span>
                                     </div>
                                 </td>
+                                @if (UserRole == "Admin")
+                                {
+                                    <td>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
+                                            @c.MerchantName
+                                        </span>
+                                    </td>
+                                }
                                 <td class="text-muted">@c.PhoneNumber</td>
                                 <td class="text-muted">@c.Email</td>
                                 <td class="font-semibold text-accent">@totalSpent.ToString("N0") MMK</td>
@@ -158,7 +186,13 @@
                             </div>
                         </div>
                         <div>
-                            <h4 class="font-bold text-gray-900 dark:text-gray-100 text-lg mb-1 truncate">@c.Name</h4>
+                            <div class="flex items-center justify-between mb-1">
+                                <h4 class="font-bold text-gray-900 dark:text-gray-100 text-lg truncate">@c.Name</h4>
+                                @if (UserRole == "Admin")
+                                {
+                                    <span class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px] rounded font-medium">@c.MerchantName</span>
+                                }
+                            </div>
                             <p class="text-sm text-gray-400 truncate"><svg class="w-3.5 h-3.5 inline-block mr-1 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>@c.PhoneNumber</p>
                             <p class="text-sm text-gray-400 mb-3 truncate"><svg class="w-3.5 h-3.5 inline-block mr-1 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>@c.Email</p>
                             <div class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800 mb-2">
@@ -213,6 +247,19 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
                     <input type="email" class="form-input w-full" @bind="CurrentCustomer.Email" placeholder="customer@example.com" />
                 </div>
+                @if (UserRole == "Admin" && !IsEditMode)
+                {
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assigned Merchant</label>
+                        <select class="form-input w-full" @bind="CurrentCustomer.MerchantId">
+                            <option value="">-- Select Merchant --</option>
+                            @foreach (var m in MerchantList)
+                            {
+                                <option value="@m.Id">@m.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
             </div>
             <div class="px-6 py-4 bg-gray-50 dark:bg-surface flex justify-end gap-3">
                 <button @onclick="CloseModal" class="btn-ghost">Cancel</button>
@@ -280,6 +327,21 @@
 
     // TODO: Get this from Auth state
     private Guid MerchantId = Guid.Empty; 
+    private string UserRole = "";
+    private List<MerchantResponseDto> MerchantList = new();
+
+    private Guid SelectedMerchantId
+    {
+        get => MerchantId;
+        set
+        {
+            if (MerchantId != value)
+            {
+                MerchantId = value;
+                _ = LoadCustomers();
+            }
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -291,24 +353,25 @@
             var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
             var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? user.FindFirst("role")?.Value ?? "";
 
-            if (!string.IsNullOrEmpty(merchantClaim) && Guid.TryParse(merchantClaim, out var mId))
+            // Always set UserRole from claims first
+            UserRole = role;
+
+            if (role == "Admin")
+            {
+                MerchantId = Guid.Empty; // All merchants by default for Admin
+                
+                var merchantsResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 100 });
+                if (merchantsResponse.IsSuccess && merchantsResponse.Data?.Data != null)
+                {
+                    MerchantList = merchantsResponse.Data.Data.ToList();
+                }
+                
+                await LoadCustomers();
+            }
+            else if (!string.IsNullOrEmpty(merchantClaim) && Guid.TryParse(merchantClaim, out var mId))
             {
                 MerchantId = mId;
                 await LoadCustomers();
-            }
-            else if (role == "Admin")
-            {
-                var merchantsResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 1 });
-                if (merchantsResponse.IsSuccess && merchantsResponse.Data?.Data != null && merchantsResponse.Data.Data.Any())
-                {
-                    MerchantId = merchantsResponse.Data.Data.First().Id;
-                    await LoadCustomers();
-                }
-                else
-                {
-                    ErrorMessage = "No merchants found. Please create a merchant first.";
-                    IsLoading = false;
-                }
             }
             else
             {
@@ -357,7 +420,7 @@
             var filter = new PaginationFilter { PageNumber = CurrentPage, PageSize = PageSize, SearchTerm = SearchTerm };
             
             var ordersTask = SaleService.GetAllOrdersAsync(new PaginationFilter { PageSize = 1000 });
-            var customersTask = CustomerService.GetCustomersAsync(MerchantId, filter);
+            var customersTask = CustomerService.GetCustomersAsync(MerchantId == Guid.Empty ? null : MerchantId, filter);
             await Task.WhenAll(ordersTask, customersTask);
             
             var response = customersTask.Result;

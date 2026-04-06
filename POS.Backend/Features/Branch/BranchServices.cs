@@ -26,6 +26,7 @@ namespace POS.Backend.Features.Branch
         public string? Address { get; set; }
         public string? PhoneNumber { get; set; }
         public int ActiveUsersCount { get; set; }
+        public string MerchantName { get; set; } = null!;
     }
     public interface IBranchServices
     {
@@ -124,7 +125,8 @@ namespace POS.Backend.Features.Branch
                     Name = b.Name,
                     Address = b.Address,
                     PhoneNumber = b.PhoneNumber,
-                    ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
+                    ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null),
+                    MerchantName = b.Merchant.Name
                 })
                 .ToListAsync();
 
@@ -142,7 +144,8 @@ namespace POS.Backend.Features.Branch
                     Name = b.Name,
                     Address = b.Address,
                     PhoneNumber = b.PhoneNumber,
-                    ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
+                    ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null),
+                    MerchantName = b.Merchant.Name
                 })
                 .FirstOrDefaultAsync();
 
@@ -178,7 +181,8 @@ namespace POS.Backend.Features.Branch
                     Name = b.Name,
                     Address = b.Address,
                     PhoneNumber = b.PhoneNumber,
-                    ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null)
+                    ActiveUsersCount = b.Users.Count(u => u.DeletedAt == null),
+                    MerchantName = b.Merchant.Name
                 })
                 .ToListAsync();
 

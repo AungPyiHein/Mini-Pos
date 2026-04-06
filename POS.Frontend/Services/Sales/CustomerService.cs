@@ -7,7 +7,7 @@ namespace POS.Frontend.Services.Sales;
 
 public interface ICustomerService
 {
-    Task<ApiResponse<PagedResponse<CustomerResponseDto>>> GetCustomersAsync(Guid merchantId, PaginationFilter filter);
+    Task<ApiResponse<PagedResponse<CustomerResponseDto>>> GetCustomersAsync(Guid? merchantId, PaginationFilter filter);
     Task<ApiResponse<CustomerResponseDto>> GetCustomerByIdAsync(Guid id);
     Task<ApiResponse<Guid>> CreateCustomerAsync(CreateCustomerRequest request);
     Task<ApiResponse> UpdateCustomerAsync(Guid id, CreateCustomerRequest request);
@@ -22,15 +22,19 @@ public class CustomerService : ICustomerService
         _http = http;
     }
 
-    public async Task<ApiResponse<PagedResponse<CustomerResponseDto>>> GetCustomersAsync(Guid merchantId, PaginationFilter filter)
+    public async Task<ApiResponse<PagedResponse<CustomerResponseDto>>> GetCustomersAsync(Guid? merchantId, PaginationFilter filter)
     {
         try
         {
-            var url = $"/api/customers/merchant/{merchantId}?pageNumber={filter.PageNumber}&pageSize={filter.PageSize}";
+            var url = (merchantId == null || merchantId == Guid.Empty) 
+                ? $"/api/customers?pageNumber={filter.PageNumber}&pageSize={filter.PageSize}"
+                : $"/api/customers/merchant/{merchantId}?pageNumber={filter.PageNumber}&pageSize={filter.PageSize}";
+            
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 url += $"&searchTerm={Uri.EscapeDataString(filter.SearchTerm)}";
             }
+
 
             var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<CustomerResponseDto>>>(url);
             if (response != null) response.IsSuccess = true;

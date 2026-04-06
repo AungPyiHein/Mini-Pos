@@ -11,6 +11,7 @@ namespace POS.Backend.Features.Customers
         public string Name { get; set; } = null!;
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
+        public string MerchantName { get; set; } = string.Empty;
     }
 
     public class CreateCustomerRequest
@@ -43,15 +44,20 @@ namespace POS.Backend.Features.Customers
 
         public async Task<Result<PagedResponse<CustomerResponseDto>>> GetCustomersAsync(Guid merchantId, PaginationFilter filter)
         {
-            var targetMerchantId = merchantId;
+            var query = _context.Customers
+                .Include(c => c.Merchant)
+                .Where(c => c.DeletedAt == null)
+                .AsQueryable();
+
             if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
             {
-                targetMerchantId = _currentUser.MerchantId ?? targetMerchantId;
+                var targetMerchantId = _currentUser.MerchantId ?? merchantId;
+                query = query.Where(c => c.MerchantId == targetMerchantId);
             }
-
-            var query = _context.Customers
-                .Where(c => c.MerchantId == targetMerchantId && c.DeletedAt == null)
-                .AsQueryable();
+            else if (merchantId != Guid.Empty)
+            {
+                query = query.Where(c => c.MerchantId == merchantId);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
@@ -70,7 +76,8 @@ namespace POS.Backend.Features.Customers
                     Id = c.Id,
                     Name = c.Name,
                     PhoneNumber = c.PhoneNumber,
-                    Email = c.Email
+                    Email = c.Email,
+                    MerchantName = c.Merchant.Name
                 })
                 .ToListAsync();
 
@@ -81,23 +88,32 @@ namespace POS.Backend.Features.Customers
         public async Task<Result<CustomerResponseDto>> GetCustomerByIdAsync(Guid id)
         {
             var customer = await _context.Customers
-                .Where(c => c.Id == id && c.DeletedAt == null)
-                .Select(c => new CustomerResponseDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    PhoneNumber = c.PhoneNumber,
-                    Email = c.Email
-                })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(c => c.Id == id && c.DeletedAt == null);
 
             if (customer == null) return Result<CustomerResponseDto>.Failure("Customer not found.");
 
-            return Result<CustomerResponseDto>.Success(customer);
+            if (_currentUser.Role != POS.Shared.Models.UserRole.Admin && customer.MerchantId != _currentUser.MerchantId)
+            {
+                return Result<CustomerResponseDto>.Failure("You do not have permission to view this customer.");
+            }
+
+            return Result<CustomerResponseDto>.Success(new CustomerResponseDto
+            {
+                Id = customer.Id,
+                Name = customer.Name,
+                PhoneNumber = customer.PhoneNumber,
+                Email = customer.Email,
+                MerchantName = customer.Merchant.Name
+            });
         }
 
         public async Task<Result<Guid>> CreateCustomerAsync(CreateCustomerRequest request)
         {
+            if (_currentUser.Role != POS.Shared.Models.UserRole.Admin)
+            {
+                request.MerchantId = _currentUser.MerchantId ?? request.MerchantId;
+            }
+
             var merchantExists = await _context.Merchants.AnyAsync(m => m.Id == request.MerchantId && m.DeletedAt == null);
             if (!merchantExists) return Result<Guid>.Failure("Merchant not found.");
 
@@ -122,6 +138,11 @@ namespace POS.Backend.Features.Customers
             var customer = await _context.Customers.FindAsync(id);
             if (customer == null || customer.DeletedAt != null) return Result<bool>.Failure("Customer not found.");
 
+            if (_currentUser.Role != POS.Shared.Models.UserRole.Admin && customer.MerchantId != _currentUser.MerchantId)
+            {
+                return Result<bool>.Failure("You do not have permission to update this customer.");
+            }
+
             customer.Name = request.Name;
             customer.PhoneNumber = request.PhoneNumber;
             customer.Email = request.Email;
@@ -135,6 +156,11 @@ namespace POS.Backend.Features.Customers
         {
             var customer = await _context.Customers.FindAsync(id);
             if (customer == null || customer.DeletedAt != null) return Result<bool>.Failure("Customer not found.");
+
+            if (_currentUser.Role != POS.Shared.Models.UserRole.Admin && customer.MerchantId != _currentUser.MerchantId)
+            {
+                return Result<bool>.Failure("You do not have permission to delete this customer.");
+            }
 
             customer.DeletedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
