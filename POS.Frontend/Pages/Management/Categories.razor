@@ -7,6 +7,7 @@
 @using POS.Frontend.Services.Categories
 @using POS.Frontend.Services.Merchants
 @using POS.Shared.Models
+@inject NavigationManager NavManager
 
 <div class="space-y-5">
 
@@ -68,7 +69,6 @@
                         <th>Category Name</th>
                         <th>Description</th>
                         <th>Products</th>
-                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -108,22 +108,19 @@
                     {
                         @foreach (var c in CategoryList)
                         {
-                            <tr>
+                            <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors" @onclick="() => NavigateToProducts(c.Id)">
                                 <td>
                                     <div class="flex items-center gap-2">
-                                        <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-sm">📁</div>
+                                        <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-sm">@CategoryIconHelper.GetIcon(c.Name)</div>
                                         <span class="font-medium text-gray-800 dark:text-gray-200">@c.Name</span>
                                     </div>
                                 </td>
                                 <td class="text-muted">@c.Description</td>
                                 <td>@c.ProductCount products</td>
                                 <td>
-                                    <span class="badge badge-success">Active</span>
-                                </td>
-                                <td>
                                     <div class="flex gap-1">
-                                        <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => OpenEditModal(c)">Edit</button>
-                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => ShowDeleteConfirm(c.Id, c.Name)">Delete</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => OpenEditModal(c)" @onclick:stopPropagation>Edit</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => ShowDeleteConfirm(c.Id, c.Name)" @onclick:stopPropagation>Delete</button>
                                     </div>
                                 </td>
                             </tr>
@@ -137,12 +134,11 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 @foreach (var c in CategoryList)
                 {
-                    <div class="group bg-white dark:bg-surface border border-gray-100 dark:border-gray-800 rounded-2xl p-4 hover:shadow-xl hover:border-accent/20 transition-all">
+                    <div class="group bg-white dark:bg-surface border border-gray-100 dark:border-gray-800 rounded-2xl p-4 hover:shadow-xl hover:border-accent/20 transition-all cursor-pointer" @onclick="() => NavigateToProducts(c.Id)">
                         <div class="flex justify-between items-start mb-4">
                             <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-xl text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                                📁
+                                @CategoryIconHelper.GetIcon(c.Name)
                             </div>
-                            <span class="badge badge-success">Active</span>
                         </div>
                         <div>
                             <h4 class="font-bold text-gray-900 dark:text-gray-100 text-lg mb-1 truncate">@c.Name</h4>
@@ -150,8 +146,8 @@
                             <p class="font-semibold text-accent">@c.ProductCount products</p>
                         </div>
                         <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                            <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => OpenEditModal(c)">Edit</button>
-                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowDeleteConfirm(c.Id, c.Name)">Delete</button>
+                            <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => OpenEditModal(c)" @onclick:stopPropagation>Edit</button>
+                            <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowDeleteConfirm(c.Id, c.Name)" @onclick:stopPropagation>Delete</button>
                         </div>
                     </div>
                 }
@@ -246,6 +242,12 @@
 
 @code {
     private List<CategoryResponseDto> CategoryList = new();
+
+    private void NavigateToProducts(Guid categoryId)
+    {
+        NavManager.NavigateTo($"/products?categoryIdQuery={categoryId}");
+    }
+
     private List<MerchantResponseDto> MerchantList = new();
     private bool _isLoading = true;
     private string? _errorMessage;

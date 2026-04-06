@@ -156,13 +156,9 @@ namespace POS.Backend.Features.Branch
                 .Where(b => b.DeletedAt == null)
                 .AsQueryable();
 
-            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
             {
                 query = query.Where(b => b.MerchantId == _currentUser.MerchantId);
-            }
-            else if (_currentUser.Role == POS.Shared.Models.UserRole.Staff && _currentUser.BranchId.HasValue)
-            {
-                query = query.Where(b => b.Id == _currentUser.BranchId);
             }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))

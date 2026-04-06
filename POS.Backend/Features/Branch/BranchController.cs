@@ -4,7 +4,7 @@ using POS.Backend.Features.Branch;
 
 namespace POS.Backend.Features.Branch
 {
-    [Authorize(Roles = "Admin,MerchantAdmin")]
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class BranchController : ControllerBase
@@ -14,6 +14,8 @@ namespace POS.Backend.Features.Branch
         {
             _branchServices = branchServices;
         }
+
+        [Authorize(Roles = "Admin,MerchantAdmin")]
         [HttpPost]
         public async Task<IActionResult> CreateBranch(CreateBranchRequest request)
         {
@@ -42,6 +44,7 @@ namespace POS.Backend.Features.Branch
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branches retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
+        [Authorize(Roles = "Admin,MerchantAdmin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBranch(Guid id, UpdateBranchRequest request)
         {
@@ -53,6 +56,7 @@ namespace POS.Backend.Features.Branch
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branch Updated" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
+        [Authorize(Roles = "Admin,MerchantAdmin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBranch(Guid id)
         {
@@ -60,6 +64,7 @@ namespace POS.Backend.Features.Branch
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Branch Deleted" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
 
+        [Authorize(Roles = "Admin,MerchantAdmin")]
         [HttpPatch("{id}/restore")]
         public async Task<IActionResult> RestoreBranch(Guid id)
         {

@@ -42,19 +42,13 @@ namespace POS.Backend.Features.Inventory
 
         public async Task<Result<PagedResponse<InventoryResponseDto>>> GetBranchInventoryAsync(Guid branchId, PaginationFilter filter)
         {
-            var targetBranchId = branchId;
-            if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
-            {
-                targetBranchId = _currentUser.BranchId ?? targetBranchId;
-            }
-
             var query = _context.BranchInventories
                 .Include(i => i.Product)
                 .Include(i => i.Branch)
-                .Where(i => i.BranchId == targetBranchId && i.DeletedAt == null)
+                .Where(i => i.BranchId == branchId && i.DeletedAt == null)
                 .AsQueryable();
 
-            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
             {
                 query = query.Where(i => i.Branch.MerchantId == _currentUser.MerchantId);
             }
@@ -88,11 +82,7 @@ namespace POS.Backend.Features.Inventory
         {
             var branchQuery = _context.Branches.Where(b => b.DeletedAt == null).AsQueryable();
 
-            if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
-            {
-                branchQuery = branchQuery.Where(b => b.Id == _currentUser.BranchId);
-            }
-            else if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin)
+            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
             {
                 branchQuery = branchQuery.Where(b => b.MerchantId == _currentUser.MerchantId);
             }

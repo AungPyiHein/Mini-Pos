@@ -88,7 +88,7 @@
                                  @onclick="() => OpenProfileDrawer(p)">
                                 <div class="flex justify-between items-start mb-4">
                                     <div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-2xl group-hover:bg-accent group-hover:text-white transition-colors">
-                                        @GetCategoryIcon(p.CategoryName)
+                                        @CategoryIconHelper.GetIcon(p.CategoryName)
                                     </div>
                                     <span class="badge badge-info group-hover:bg-blue-100 transition-colors">@p.CategoryName</span>
                                 </div>
@@ -111,7 +111,6 @@
                                     <th>Category</th>
                                     <th>SKU</th>
                                     <th>Price</th>
-                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -121,7 +120,7 @@
                                         <td>
                                             <div class="flex items-center gap-3">
                                                 <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-xl">
-                                                    @GetCategoryIcon(p.CategoryName)
+                                                    @CategoryIconHelper.GetIcon(p.CategoryName)
                                                 </div>
                                                 <span class="font-medium text-gray-900 dark:text-gray-100">@p.Name</span>
                                             </div>
@@ -129,7 +128,6 @@
                                         <td><span class="badge badge-info">@p.CategoryName</span></td>
                                         <td class="text-gray-500 text-sm">@p.SKU</td>
                                         <td class="font-semibold text-gray-900 dark:text-gray-100">@p.Price.ToString("N0") MMK</td>
-                                        <td><span class="badge badge-success">Active</span></td>
                                     </tr>
                                 }
                             </tbody>
@@ -162,7 +160,7 @@
             <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-surface/50">
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center text-2xl">
-                        @GetCategoryIcon(selectedProduct.CategoryName)
+                        @CategoryIconHelper.GetIcon(selectedProduct.CategoryName)
                     </div>
                     <div>
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white">@selectedProduct.Name</h3>
@@ -418,6 +416,9 @@
 </style>
 
 @code {
+    [SupplyParameterFromQuery]
+    public Guid? CategoryIdQuery { get; set; }
+
     private List<ProductsResponseDto> ProductList = new();
     private List<CategoryResponseDto> CategoryList = new();
     private List<MerchantResponseDto> MerchantList = new();
@@ -485,6 +486,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (CategoryIdQuery.HasValue)
+        {
+            selectedCategoryId = CategoryIdQuery.Value;
+        }
         await Task.WhenAll(LoadData(), LoadCategories(), LoadMerchants());
     }
 
@@ -724,10 +729,10 @@
                 MerchantId = formModel.MerchantId
             };
             var createResult = await ProductService.CreateProductAsync(request);
-            result = new ApiResponse<bool> { Message = createResult.Message, Data = createResult.Data != Guid.Empty };
+            result = new ApiResponse<bool> { IsSuccess = createResult.IsSuccess, Message = createResult.Message, Data = createResult.Data != Guid.Empty };
         }
 
-        if (result.Data)
+        if (result.IsSuccess)
         {
             showModal = false;
             // Update selected product in drawer if editing
@@ -768,7 +773,7 @@
     private async Task DeleteProduct(Guid id)
     {
         var result = await ProductService.DeleteProductAsync(id);
-        if (result.Data)
+        if (result.IsSuccess)
         {
             if (selectedProduct?.Id == id)
             {
@@ -778,15 +783,5 @@
         }
     }
 
-    private string GetCategoryIcon(string category)
-    {
-        return category?.ToLower() switch
-        {
-            "beverages" => "☕",
-            "food" => "🍔",
-            "bakery" => "🥐",
-            "snacks" => "🍟",
-            _ => "📦"
-        };
-    }
+
 }

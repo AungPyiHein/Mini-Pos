@@ -62,6 +62,11 @@ namespace POS.Backend.Features.Sales
 
         public async Task<Result<Guid>> CreateOrderAsync(CreateOrderRequest request)
         {
+            if (_currentUser.Role == POS.Shared.Models.UserRole.Staff && request.BranchId != _currentUser.BranchId)
+            {
+                return Result<Guid>.Failure("Staff members can only create orders for their assigned branch.");
+            }
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
