@@ -109,6 +109,15 @@ namespace POS.Backend.Features.Inventory
 
         public async Task<Result<bool>> AdjustStockAsync(UpdateStockRequest request)
         {
+            // Staff can only adjust inventory for their own branch
+            if (_currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            {
+                if (_currentUser.BranchId == null || _currentUser.BranchId != request.BranchId)
+                {
+                    return Result<bool>.Failure("Staff can only adjust inventory for their own branch.");
+                }
+            }
+
             var inventory = await _context.BranchInventories
                 .FirstOrDefaultAsync(i => i.BranchId == request.BranchId && i.ProductId == request.ProductId && i.DeletedAt == null);
 

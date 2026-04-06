@@ -27,6 +27,7 @@ namespace POS.Backend.Features.Sales
         public decimal TotalAmount { get; set; }
         public Guid? CustomerId { get; set; }
         public string CustomerName { get; set; } = "Walk-in Customer";
+        public string BranchName { get; set; } = "Main Branch";
         public string Status { get; set; } = "Completed";
         public List<OrderItemResponseDto> Items { get; set; } = new();
     }
@@ -137,6 +138,9 @@ namespace POS.Backend.Features.Sales
                     OrderDate = o.OrderDate,
                     TotalAmount = o.TotalAmount,
                     CustomerId = o.CustomerId,
+                    CustomerName = o.Customer != null ? o.Customer.Name : "Walk-in Customer",
+                    BranchName = o.Branch != null ? o.Branch.Name : "Main Branch",
+                    Status = "Completed",
                     Items = o.OrderItems.Select(oi => new OrderItemResponseDto
                     {
                         ProductId = oi.ProductId,
@@ -208,6 +212,7 @@ namespace POS.Backend.Features.Sales
                     TotalAmount = o.TotalAmount,
                     CustomerId = o.CustomerId,
                     CustomerName = o.Customer != null ? o.Customer.Name : "Walk-in Customer",
+                    BranchName = o.Branch != null ? o.Branch.Name : "Main Branch",
                     Status = "Completed",
                     Items = o.OrderItems.Select(oi => new OrderItemResponseDto
                     {

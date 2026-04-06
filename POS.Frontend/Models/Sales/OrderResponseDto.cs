@@ -7,6 +7,7 @@ public class OrderResponseDto
     public decimal TotalAmount { get; set; }
     public Guid? CustomerId { get; set; }
     public string CustomerName { get; set; } = "Walk-in Customer";
+    public string BranchName { get; set; } = "Main Branch";
     public string Status { get; set; } = "Completed";
     public List<OrderItemResponseDto> Items { get; set; } = new();
 }

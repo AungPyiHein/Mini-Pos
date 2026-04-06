@@ -4,6 +4,7 @@
 @inject ICategoryService CategoryService
 @inject IMerchantService MerchantService
 @inject POS.Frontend.Services.Inventory.IInventoryService InventoryService
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @using POS.Frontend.Models
 @using POS.Frontend.Models.Merchants
 @using POS.Frontend.Models.Categories
@@ -241,10 +242,17 @@
                                             </p>
                                         </div>
                                     </div>
-                                    <button class="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md text-xs font-medium border border-gray-200 transition-colors" 
-                                            @onclick="() => OpenAdjustModal(inv)">
-                                        Adjust
-                                    </button>
+                                    @if (CanAdjustBranch(inv.BranchId))
+                                    {
+                                        <button class="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md text-xs font-medium border border-gray-200 transition-colors" 
+                                                @onclick="() => OpenAdjustModal(inv)">
+                                            Adjust
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="px-3 py-1.5 text-gray-400 text-xs font-medium italic">View only</span>
+                                    }
                                 </div>
                             }
                         </div>
@@ -452,6 +460,10 @@
     private Guid? selectedCategoryId;
     private ProductFormModel formModel = new();
 
+    // Auth state
+    private string userRole = "";
+    private Guid? userBranchId;
+
     // Pagination
     private int currentPage = 1;
     private int totalPages = 1;
@@ -486,6 +498,15 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Get user role and branch from auth claims
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        userRole = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                   ?? user.FindFirst("role")?.Value ?? "";
+        var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
+        if (Guid.TryParse(branchClaim, out var bid))
+            userBranchId = bid;
+
         if (CategoryIdQuery.HasValue)
         {
             selectedCategoryId = CategoryIdQuery.Value;
@@ -623,6 +644,17 @@
             QuantityChange = 0
         };
         showAdjustModal = true;
+    }
+
+    private bool CanAdjustBranch(Guid branchId)
+    {
+        // Staff can only adjust their own branch
+        if (userRole == "Staff")
+        {
+            return userBranchId.HasValue && userBranchId.Value == branchId;
+        }
+        // Admin and MerchantAdmin can adjust any branch
+        return true;
     }
 
     private void CloseAdjustModal()

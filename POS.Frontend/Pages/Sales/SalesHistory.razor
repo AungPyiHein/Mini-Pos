@@ -98,7 +98,7 @@
                             <tr>
                                 <td><span class="font-medium text-accent" title="@s.Id">#@s.Id.ToString().Substring(0, 8)</span></td>
                                 <td>@s.CustomerName</td>
-                                <td><span class="badge badge-info">Main Branch</span></td>
+                                <td><span class="badge badge-info">@s.BranchName</span></td>
                                 <td>@s.Items.Sum(i => i.Quantity)</td>
                                 <td class="text-muted text-xs">@s.OrderDate.ToString("dd MMM yyyy, HH:mm")</td>
                                 <td class="font-semibold">@s.TotalAmount.ToString("N0") MMK</td>
