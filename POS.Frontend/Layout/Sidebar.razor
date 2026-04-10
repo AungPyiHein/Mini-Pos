@@ -70,15 +70,12 @@
                         </NavLink>
                     </Authorized>
                 </AuthorizeView>
-                <AuthorizeView Roles="Admin, MerchantAdmin">
+                <AuthorizeView Roles="Admin">
                     <Authorized>
-                        @if (context.User.IsInRole("Admin"))
-                        {
-                            <NavLink href="merchants" class="nav-item" ActiveClass="active">
-                                @StoreIcon
-                                Merchants
-                            </NavLink>
-                        }
+                        <NavLink href="merchants" class="nav-item" ActiveClass="active">
+                            @StoreIcon
+                            Merchants
+                        </NavLink>
                         <NavLink href="restoration" class="nav-item" ActiveClass="active">
                             @RestoreIcon
                             Restoration

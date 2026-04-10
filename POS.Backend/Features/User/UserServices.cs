@@ -23,7 +23,6 @@ namespace POS.Backend.Features.User
         public string? Email { get; set; }
         public string? FullName { get; set; }
         public string? PhoneNumber { get; set; }
-        public string? AvatarUrl { get; set; }
         public bool? IsActive { get; set; }
         public string? PlainPassword { get; set; }
         public UserRole? Role { get; set; }
@@ -39,7 +38,6 @@ namespace POS.Backend.Features.User
         public string? FullName { get; set; }
         public string? PhoneNumber { get; set; }
         public string Role { get; set; } = null!;
-        public string? AvatarUrl { get; set; }
         public bool IsActive { get; set; }
         public Guid? MerchantId { get; set; }
         public Guid? BranchId { get; set; }
@@ -136,7 +134,6 @@ namespace POS.Backend.Features.User
                 FullName = user.FullName,
                 PhoneNumber = user.PhoneNumber,
                 Role = user.Role,
-                AvatarUrl = user.AvatarUrl,
                 IsActive = user.IsActive,
                 MerchantId = user.MerchantId,
                 BranchId = user.BranchId,
@@ -178,7 +175,6 @@ namespace POS.Backend.Features.User
                     FullName = u.FullName,
                     PhoneNumber = u.PhoneNumber,
                     Role = u.Role,
-                    AvatarUrl = u.AvatarUrl,
                     IsActive = u.IsActive,
                     MerchantId = u.MerchantId,
                     BranchId = u.BranchId,
@@ -216,11 +212,6 @@ namespace POS.Backend.Features.User
             if (!string.IsNullOrEmpty(request.PhoneNumber))
             {
                 user.PhoneNumber = request.PhoneNumber;
-            }
-
-            if (!string.IsNullOrEmpty(request.AvatarUrl))
-            {
-                user.AvatarUrl = request.AvatarUrl;
             }
 
             if (request.IsActive.HasValue)
