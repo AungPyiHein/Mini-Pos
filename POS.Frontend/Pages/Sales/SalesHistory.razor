@@ -52,6 +52,7 @@
                         <th>Invoice</th>
                         <th>Customer</th>
                         <th>Branch</th>
+                        <th>Cashier</th>
                         <th>Items</th>
                         <th>Date & Time</th>
                         <th>Total</th>
@@ -63,7 +64,7 @@
                     @if (_isLoading && !_isSearching)
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-8">
+                            <td colspan="9" class="text-center py-8">
                                 <div class="flex flex-col items-center justify-center text-muted">
                                     <svg class="animate-spin h-8 w-8 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -77,7 +78,7 @@
                     else if (!string.IsNullOrEmpty(_errorMessage))
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-8 text-red-500">
+                            <td colspan="9" class="text-center py-8 text-red-500">
                                 <p>@_errorMessage</p>
                                 <button class="btn-secondary mt-4" @onclick="() => LoadSales()">Try Again</button>
                             </td>
@@ -86,7 +87,7 @@
                     else if (!Sales.Any())
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-8 text-muted">
+                            <td colspan="9" class="text-center py-8 text-muted">
                                 <p>No transactions found.</p>
                             </td>
                         </tr>
@@ -99,6 +100,12 @@
                                 <td><span class="font-medium text-accent" title="@s.Id">#@s.Id.ToString().Substring(0, 8)</span></td>
                                 <td>@s.CustomerName</td>
                                 <td><span class="badge badge-info">@s.BranchName</span></td>
+                                <td>
+                                    <span class="inline-flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                        @s.CashierName
+                                    </span>
+                                </td>
                                 <td>@s.Items.Sum(i => i.Quantity)</td>
                                 <td class="text-muted text-xs">@s.OrderDate.ToString("dd MMM yyyy, HH:mm")</td>
                                 <td class="font-semibold">@s.TotalAmount.ToString("N0") MMK</td>

@@ -152,6 +152,7 @@
                                 <td class="text-muted text-xs truncate max-w-[150px]" title="@recentlyBought">@recentlyBought</td>
                                 <td>
                                     <div class="flex gap-1">
+                                        <button class="btn-ghost py-1 px-2 text-xs text-blue-500" @onclick="() => ShowCustomerDetails(c)">View</button>
                                         <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowEditModal(c)">Edit</button>
                                         <button class="btn-ghost py-1 px-2 text-xs text-red-500" @onclick="() => ShowDeleteConfirm(c.Id, c.Name)">Delete</button>
                                     </div>
@@ -202,6 +203,7 @@
                             <p class="text-xs text-muted truncate" title="@recentlyBought">Purchases: @recentlyBought</p>
                         </div>
                         <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                            <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowCustomerDetails(c)">View</button>
                             <button class="btn-secondary flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowEditModal(c)">Edit</button>
                             <button class="btn-danger flex-1 py-1.5 text-xs justify-center" @onclick="() => ShowDeleteConfirm(c.Id, c.Name)">Delete</button>
                         </div>
@@ -301,6 +303,58 @@
     </div>
 }
 
+@if (ShowDetailsModal && SelectedCustomerDetails != null)
+{
+    var customerOrders = OrderList.Where(o => o.CustomerId == SelectedCustomerDetails.Id).OrderByDescending(o => o.OrderDate).ToList();
+    var allItems = customerOrders.SelectMany(o => o.Items.Select(i => new { o.OrderDate, Item = i })).ToList();
+
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-surface rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 pb-1">@SelectedCustomerDetails.Name's Purchases</h3>
+                <button @onclick="CloseDetailsModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                @if (allItems.Any())
+                {
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Item</th>
+                                <th class="text-right">Qty</th>
+                                <th class="text-right">SubTotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var purchasedItem in allItems)
+                            {
+                                <tr>
+                                    <td class="text-xs text-muted whitespace-nowrap">@purchasedItem.OrderDate.ToString("MMM dd, yyyy HH:mm")</td>
+                                    <td class="font-medium text-gray-800 dark:text-gray-200">@purchasedItem.Item.ProductName</td>
+                                    <td class="text-right text-muted">@purchasedItem.Item.Quantity</td>
+                                    <td class="text-right font-semibold text-accent">@purchasedItem.Item.SubTotal.ToString("N0") MMK</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="text-center py-8 text-muted italic">
+                        No purchases found for this customer.
+                    </div>
+                }
+            </div>
+            <div class="px-6 py-4 bg-gray-50 dark:bg-surface border-t border-gray-100 dark:border-gray-800 flex justify-end shrink-0">
+                <button @onclick="CloseDetailsModal" class="btn-ghost">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<CustomerResponseDto> CustomerList = new();
     private List<OrderResponseDto> OrderList = new();
@@ -317,6 +371,8 @@
     private string SearchTerm = "";
     private bool IsSearching = false;
     private bool isGridView = true;
+    private bool ShowDetailsModal = false;
+    private CustomerResponseDto? SelectedCustomerDetails;
     private CancellationTokenSource? _searchCts;
     private int TotalRecords = 0;
     
@@ -477,6 +533,18 @@
             Email = customer.Email
         };
         ShowModal = true;
+    }
+
+    private void ShowCustomerDetails(CustomerResponseDto customer)
+    {
+        SelectedCustomerDetails = customer;
+        ShowDetailsModal = true;
+    }
+
+    private void CloseDetailsModal()
+    {
+        ShowDetailsModal = false;
+        SelectedCustomerDetails = null;
     }
 
     private void CloseModal()

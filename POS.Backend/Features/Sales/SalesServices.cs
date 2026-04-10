@@ -29,6 +29,7 @@ namespace POS.Backend.Features.Sales
         public string CustomerName { get; set; } = "Walk-in Customer";
         public string BranchName { get; set; } = "Main Branch";
         public string Status { get; set; } = "Completed";
+        public string CashierName { get; set; } = "Unknown";
         public List<OrderItemResponseDto> Items { get; set; } = new();
     }
 
@@ -71,12 +72,14 @@ namespace POS.Backend.Features.Sales
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                var processedBy = request.ProcessedById ?? (_currentUser.IsAuthenticated && _currentUser.UserId != Guid.Empty ? _currentUser.UserId : null);
+
                 var order = new Order
                 {
                     Id = Guid.NewGuid(),
                     BranchId = request.BranchId,
                     CustomerId = request.CustomerId,
-                    ProcessedById = request.ProcessedById,
+                    ProcessedById = processedBy,
                     OrderDate = DateTime.UtcNow,
                     CreatedAt = DateTime.UtcNow,
                     TotalAmount = 0
@@ -131,6 +134,9 @@ namespace POS.Backend.Features.Sales
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
+                .Include(o => o.Customer)
+                .Include(o => o.Branch)
+                .Include(o => o.ProcessedBy)
                 .Where(o => o.Id == id && o.DeletedAt == null)
                 .Select(o => new OrderResponseDto
                 {
@@ -141,6 +147,7 @@ namespace POS.Backend.Features.Sales
                     CustomerName = o.Customer != null ? o.Customer.Name : "Walk-in Customer",
                     BranchName = o.Branch != null ? o.Branch.Name : "Main Branch",
                     Status = "Completed",
+                    CashierName = o.ProcessedBy != null ? (!string.IsNullOrWhiteSpace(o.ProcessedBy.FullName) ? o.ProcessedBy.FullName : o.ProcessedBy.Username) : "Unknown",
                     Items = o.OrderItems.Select(oi => new OrderItemResponseDto
                     {
                         ProductId = oi.ProductId,
@@ -164,6 +171,7 @@ namespace POS.Backend.Features.Sales
                 .ThenInclude(oi => oi.Product)
                 .Include(o => o.Customer)
                 .Include(o => o.Branch)
+                .Include(o => o.ProcessedBy)
                 .Where(o => o.DeletedAt == null)
                 .OrderByDescending(o => o.OrderDate)
                 .AsQueryable();
@@ -214,6 +222,7 @@ namespace POS.Backend.Features.Sales
                     CustomerName = o.Customer != null ? o.Customer.Name : "Walk-in Customer",
                     BranchName = o.Branch != null ? o.Branch.Name : "Main Branch",
                     Status = "Completed",
+                    CashierName = o.ProcessedBy != null ? (!string.IsNullOrWhiteSpace(o.ProcessedBy.FullName) ? o.ProcessedBy.FullName : o.ProcessedBy.Username) : "Unknown",
                     Items = o.OrderItems.Select(oi => new OrderItemResponseDto
                     {
                         ProductId = oi.ProductId,
