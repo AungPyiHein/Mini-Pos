@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using POS.Shared.Models;
 using POS.Backend.Common;
 using POS.data.Data;
 using POS.data.Entities;
@@ -49,14 +50,26 @@ namespace POS.Backend.Features.Customers
                 .Where(c => c.DeletedAt == null)
                 .AsQueryable();
 
-            if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin || _currentUser.Role == POS.Shared.Models.UserRole.Staff)
+            if (_currentUser.Role == UserRole.Admin)
             {
-                var targetMerchantId = _currentUser.MerchantId ?? merchantId;
-                query = query.Where(c => c.MerchantId == targetMerchantId);
+                if (merchantId != Guid.Empty)
+                {
+                    query = query.Where(c => c.MerchantId == merchantId);
+                }
             }
-            else if (merchantId != Guid.Empty)
+            else
             {
-                query = query.Where(c => c.MerchantId == merchantId);
+                // For MerchantAdmin and Staff, always filter by their own merchant
+                var targetMerchantId = _currentUser.MerchantId;
+                if (targetMerchantId.HasValue)
+                {
+                    query = query.Where(c => c.MerchantId == targetMerchantId.Value);
+                }
+                else if (merchantId != Guid.Empty)
+                {
+                    // Fallback to provided merchantId if user has no assigned merchantId (should not happen for staff/merchantadmin)
+                    query = query.Where(c => c.MerchantId == merchantId);
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))

@@ -65,7 +65,7 @@
                         <div class="grid grid-cols-2 gap-4 pt-6 border-t border-border">
                             <div>
                                 <p class="text-lg font-bold text-accent">@totalSalesCount</p>
-                                <p class="text-[10px] text-muted uppercase tracking-widest font-semibold">Total Orders</p>
+                                <p class="text-[10px] text-muted uppercase tracking-widest font-semibold">Total Sales</p>
                             </div>
                             <div>
                                 <p class="text-lg font-bold text-indigo-500">@totalSalesAmount.ToString("N0")</p>
@@ -90,7 +90,22 @@
                             </div>
                         </div>
                     }
-                    @if (!string.IsNullOrEmpty(branchNameDisplay))
+                    @if (role == "MerchantAdmin" && merchantBranches.Any())
+                    {
+                        <div class="space-y-3 pt-2">
+                            <p class="text-[10px] text-muted uppercase tracking-widest font-bold mb-1">Managed Branches (@merchantBranches.Count)</p>
+                            <div class="grid grid-cols-1 gap-2">
+                                @foreach (var branch in merchantBranches)
+                                {
+                                    <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-border/10 border border-gray-100 dark:border-border/20">
+                                        <div class="w-2 h-2 rounded-full bg-accent"></div>
+                                        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">@branch.Name</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(branchNameDisplay))
                     {
                         <div class="flex items-center gap-3 border-t border-border pt-4">
                             <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
@@ -169,7 +184,7 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th class="pl-6">Order ID</th>
+                                        <th class="pl-6">Sale ID</th>
                                         <th>Date</th>
                                         <th>Total</th>
                                         <th class="pr-6 text-right">Status</th>
@@ -261,6 +276,7 @@
     private int totalSalesCount = 0;
     private decimal totalSalesAmount = 0;
     private List<OrderResponseDto> recentOrders = new();
+    private List<BranchResponseDto> merchantBranches = new();
 
     // Editable fields
     private string editEmail = "";
@@ -297,6 +313,10 @@
             currentUserId = uid;
             await LoadUserProfile();
             await LoadUserStats();
+            if (role == "MerchantAdmin" && currentUserId.HasValue)
+            {
+                await LoadMerchantBranches();
+            }
         }
 
         isLoading = false;
@@ -339,6 +359,24 @@
                 recentOrders = response.Data.Data.ToList();
                 totalSalesCount = response.Data.TotalRecords;
                 totalSalesAmount = response.Data.Data.Sum(o => o.TotalAmount);
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadMerchantBranches()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var merchantClaim = authState.User.FindFirst("MerchantId")?.Value;
+            if (Guid.TryParse(merchantClaim, out var mId))
+            {
+                var response = await BranchService.GetBranchesByMerchantIdAsync(mId, new PaginationFilter { PageSize = 50 });
+                if (response.IsSuccess && response.Data != null)
+                {
+                    merchantBranches = response.Data.Data.ToList();
+                }
             }
         }
         catch { }

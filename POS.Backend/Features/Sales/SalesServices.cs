@@ -203,12 +203,13 @@ namespace POS.Backend.Features.Sales
 
             if (filter.StartDate.HasValue)
             {
-                query = query.Where(o => o.OrderDate >= filter.StartDate.Value);
+                var startDate = filter.StartDate.Value.Date;
+                query = query.Where(o => o.OrderDate >= startDate);
             }
-
+            
             if (filter.EndDate.HasValue)
             {
-                // Ensure the end date includes the entire day
+                // Ensure the end date includes the entire day (up to 23:59:59)
                 var endDate = filter.EndDate.Value.Date.AddDays(1).AddTicks(-1);
                 query = query.Where(o => o.OrderDate <= endDate);
             }
