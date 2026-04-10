@@ -185,6 +185,11 @@ namespace POS.Backend.Features.Sales
                 query = query.Where(o => o.BranchId == _currentUser.BranchId);
             }
 
+            if (filter.ProcessedById.HasValue)
+            {
+                query = query.Where(o => o.ProcessedById == filter.ProcessedById.Value);
+            }
+
             if (filter.BranchId.HasValue)
             {
                 query = query.Where(o => o.BranchId == filter.BranchId.Value);
