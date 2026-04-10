@@ -190,6 +190,11 @@ namespace POS.Backend.Features.Sales
                 query = query.Where(o => o.BranchId == filter.BranchId.Value);
             }
 
+            if (filter.ProcessedById.HasValue)
+            {
+                query = query.Where(o => o.ProcessedById == filter.ProcessedById.Value);
+            }
+
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 query = query.Where(o => (o.Customer != null && EF.Functions.Like(o.Customer.Name, $"%{filter.SearchTerm}%")) ||
