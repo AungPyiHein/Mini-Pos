@@ -12,6 +12,10 @@ public interface ICustomerService
     Task<ApiResponse<Guid>> CreateCustomerAsync(CreateCustomerRequest request);
     Task<ApiResponse> UpdateCustomerAsync(Guid id, CreateCustomerRequest request);
     Task<ApiResponse> DeleteCustomerAsync(Guid id);
+    Task<ApiResponse<LoyaltyAccountResponse>> GetCustomerLoyaltyAsync(Guid customerId);
+    Task<ApiResponse<List<LoyaltyReward>>> GetActiveRewardsAsync();
+    Task<ApiResponse<bool>> ClaimRewardAsync(ClaimRewardRequest request);
+    Task<ApiResponse<List<LoyaltyRuleDto>>> GetLoyaltyRulesAsync();
 }
 public class CustomerService : ICustomerService
 {
@@ -102,6 +106,74 @@ public class CustomerService : ICustomerService
         catch (Exception ex)
         {
             return new ApiResponse { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+    public async Task<ApiResponse<LoyaltyAccountResponse>> GetCustomerLoyaltyAsync(Guid customerId)
+    {
+        try
+        {
+            var response = await _http.GetFromJsonAsync<Result<LoyaltyAccountResponse>>($"/api/v1/loyalty/customer/{customerId}");
+            if (response != null && response.IsSuccess)
+            {
+                return new ApiResponse<LoyaltyAccountResponse> { IsSuccess = true, Data = response.Value };
+            }
+            return new ApiResponse<LoyaltyAccountResponse> { IsSuccess = false, Message = response?.Error ?? "Loyalty data not found" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<LoyaltyAccountResponse> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<List<LoyaltyReward>>> GetActiveRewardsAsync()
+    {
+        try
+        {
+            var response = await _http.GetFromJsonAsync<Result<List<LoyaltyReward>>>($"/api/v1/loyalty/rewards");
+            if (response != null && response.IsSuccess)
+            {
+                return new ApiResponse<List<LoyaltyReward>> { IsSuccess = true, Data = response.Value };
+            }
+            return new ApiResponse<List<LoyaltyReward>> { IsSuccess = false, Message = response?.Error ?? "Rewards not found" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<List<LoyaltyReward>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> ClaimRewardAsync(ClaimRewardRequest request)
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync($"/api/v1/loyalty/claim", request);
+            var result = await response.Content.ReadFromJsonAsync<Result<bool>>();
+            if (result != null && result.IsSuccess)
+            {
+                return new ApiResponse<bool> { IsSuccess = true, Data = true };
+            }
+            return new ApiResponse<bool> { IsSuccess = false, Message = result?.Error ?? "Claim failed" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<List<LoyaltyRuleDto>>> GetLoyaltyRulesAsync()
+    {
+        try
+        {
+            var response = await _http.GetFromJsonAsync<Result<List<LoyaltyRuleDto>>>($"/api/v1/loyalty/rules");
+            if (response != null && response.IsSuccess)
+            {
+                return new ApiResponse<List<LoyaltyRuleDto>> { IsSuccess = true, Data = response.Value };
+            }
+            return new ApiResponse<List<LoyaltyRuleDto>> { IsSuccess = false, Message = response?.Error ?? "Rules not found" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<List<LoyaltyRuleDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
 }

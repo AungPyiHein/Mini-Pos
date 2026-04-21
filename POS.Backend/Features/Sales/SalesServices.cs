@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using POS.Backend.Common;
 using POS.Backend.Features.Inventory;
+using POS.Backend.Features.Loyalty;
 using POS.data.Data;
 using POS.data.Entities;
 
@@ -11,6 +12,7 @@ namespace POS.Backend.Features.Sales
         public Guid BranchId { get; set; }
         public Guid? CustomerId { get; set; }
         public Guid? ProcessedById { get; set; }
+        public bool ApplyLoyalty { get; set; } = true;
         public List<CreateOrderItemRequest> Items { get; set; } = new();
     }
 
@@ -54,12 +56,18 @@ namespace POS.Backend.Features.Sales
         private readonly AppDbContext _context;
         private readonly IInventoryServices _inventoryServices;
         private readonly ICurrentUserService _currentUser;
+        private readonly ILoyaltyServices _loyaltyServices;
+        private readonly ILogger<SalesServices> _logger;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public SalesServices(AppDbContext context, IInventoryServices inventoryServices, ICurrentUserService currentUser)
+        public SalesServices(AppDbContext context, IInventoryServices inventoryServices, ICurrentUserService currentUser, ILoyaltyServices loyaltyServices, ILogger<SalesServices> logger, IServiceScopeFactory scopeFactory)
         {
             _context = context;
             _inventoryServices = inventoryServices;
             _currentUser = currentUser;
+            _loyaltyServices = loyaltyServices;
+            _logger = logger;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task<Result<Guid>> CreateOrderAsync(CreateOrderRequest request)
@@ -119,6 +127,46 @@ namespace POS.Backend.Features.Sales
                 _context.Orders.Add(order);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Process Loyalty Event after successful transaction in background
+                if (order.CustomerId.HasValue && request.ApplyLoyalty)
+                {
+                    var customer = await _context.Customers.FindAsync(order.CustomerId.Value);
+                    if (customer != null)
+                    {
+                        // Look up merchant name via branch to derive a shop-specific EventKey
+                        var branch = await _context.Branches
+                            .Include(b => b.Merchant)
+                            .FirstOrDefaultAsync(b => b.Id == request.BranchId);
+
+                        var merchantName = branch?.Merchant?.Name ?? "DEFAULT";
+                        // Sanitise: uppercase, replace spaces/special chars with underscore
+                        var safeKey = System.Text.RegularExpressions.Regex
+                            .Replace(merchantName.ToUpperInvariant(), @"[^A-Z0-9]", "_");
+                        var derivedEventKey = $"{safeKey}_PURCHASE";
+
+                        var cId = customer.Id;
+                        var cName = customer.Name;
+                        var cEmail = customer.Email;
+                        var cPhone = customer.PhoneNumber;
+                        var oAmount = order.TotalAmount;
+                        var oId = order.Id;
+
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                using var scope = _scopeFactory.CreateScope();
+                                var loyaltyService = scope.ServiceProvider.GetRequiredService<ILoyaltyServices>();
+                                await loyaltyService.ProcessSaleEventAsync(cId, cName, oAmount, oId, cEmail, cPhone, derivedEventKey);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to process loyalty event for order {OrderId}", oId);
+                            }
+                        });
+                    }
+                }
 
                 return Result<Guid>.Success(order.Id);
             }
