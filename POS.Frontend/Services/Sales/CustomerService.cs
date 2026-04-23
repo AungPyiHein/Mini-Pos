@@ -16,6 +16,10 @@ public interface ICustomerService
     Task<ApiResponse<List<LoyaltyReward>>> GetActiveRewardsAsync();
     Task<ApiResponse<bool>> ClaimRewardAsync(ClaimRewardRequest request);
     Task<ApiResponse<List<LoyaltyRuleDto>>> GetLoyaltyRulesAsync();
+    Task<ApiResponse<List<LoyaltyHistoryDto>>> GetCustomerHistoryAsync(Guid customerId);
+    Task<ApiResponse<LoyaltyAdminStatsResponse>> GetAdminStatsAsync();
+    Task<ApiResponse<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null);
+    Task<ApiResponse<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(int page = 1, int pageSize = 10, string? searchTerm = null);
 }
 public class CustomerService : ICustomerService
 {
@@ -174,6 +178,81 @@ public class CustomerService : ICustomerService
         catch (Exception ex)
         {
             return new ApiResponse<List<LoyaltyRuleDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<List<LoyaltyHistoryDto>>> GetCustomerHistoryAsync(Guid customerId)
+    {
+        try
+        {
+            var response = await _http.GetFromJsonAsync<Result<List<LoyaltyHistoryDto>>>($"/api/v1/loyalty/customer/{customerId}/history");
+            if (response != null && response.IsSuccess)
+            {
+                return new ApiResponse<List<LoyaltyHistoryDto>> { IsSuccess = true, Data = response.Value };
+            }
+            return new ApiResponse<List<LoyaltyHistoryDto>> { IsSuccess = false, Message = response?.Error ?? "History not found" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<List<LoyaltyHistoryDto>> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<LoyaltyAdminStatsResponse>> GetAdminStatsAsync()
+    {
+        try
+        {
+            var response = await _http.GetFromJsonAsync<Result<LoyaltyAdminStatsResponse>>("/api/v1/loyalty/admin/stats");
+            if (response != null && response.IsSuccess)
+            {
+                return new ApiResponse<LoyaltyAdminStatsResponse> { IsSuccess = true, Data = response.Value };
+            }
+            return new ApiResponse<LoyaltyAdminStatsResponse> { IsSuccess = false, Message = response?.Error ?? "Stats not found" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<LoyaltyAdminStatsResponse> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null)
+    {
+        try
+        {
+            var url = $"/api/v1/loyalty/admin/redemptions/history?page={page}&pageSize={pageSize}";
+            if (!string.IsNullOrEmpty(status)) url += $"&status={status}";
+            if (!string.IsNullOrEmpty(searchTerm)) url += $"&searchTerm={searchTerm}";
+
+            var response = await _http.GetFromJsonAsync<Result<PagedRedemptionHistoryResponse>>(url);
+            if (response != null && response.IsSuccess)
+            {
+                return new ApiResponse<PagedRedemptionHistoryResponse> { IsSuccess = true, Data = response.Value };
+            }
+            return new ApiResponse<PagedRedemptionHistoryResponse> { IsSuccess = false, Message = response?.Error ?? "History not found" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<PagedRedemptionHistoryResponse> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(int page = 1, int pageSize = 10, string? searchTerm = null)
+    {
+        try
+        {
+            var url = $"/api/v1/loyalty/admin/global-ledger?page={page}&pageSize={pageSize}";
+            if (!string.IsNullOrEmpty(searchTerm)) url += $"&searchTerm={searchTerm}";
+
+            var response = await _http.GetFromJsonAsync<Result<PagedLedgerHistoryResponse>>(url);
+            if (response != null && response.IsSuccess)
+            {
+                return new ApiResponse<PagedLedgerHistoryResponse> { IsSuccess = true, Data = response.Value };
+            }
+            return new ApiResponse<PagedLedgerHistoryResponse> { IsSuccess = false, Message = response?.Error ?? "Ledger not found" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<PagedLedgerHistoryResponse> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
 }

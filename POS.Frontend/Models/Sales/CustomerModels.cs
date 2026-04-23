@@ -9,6 +9,7 @@ public class CustomerResponseDto
     public string? PhoneNumber { get; set; }
     public string? Email { get; set; }
     public string MerchantName { get; set; } = string.Empty;
+    public string? MerchantLoyaltySystemId { get; set; }
 }
 
 public class CreateCustomerRequest
@@ -96,4 +97,103 @@ public class ClaimRewardRequest
     public Guid CustomerId { get; set; }
     public Guid RewardId { get; set; }
     public string? Notes { get; set; }
+}
+
+public class LoyaltyHistoryDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("pointDelta")]
+    public decimal PointDelta { get; set; }
+
+    [JsonPropertyName("eventKey")]
+    public string? EventKey { get; set; }
+
+    [JsonPropertyName("referenceId")]
+    public string? ReferenceId { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("createdAt")]
+    public DateTime CreatedAt { get; set; }
+
+    [JsonPropertyName("rewardId")]
+    public Guid? RewardId { get; set; }
+
+    [JsonPropertyName("rewardName")]
+    public string? RewardName { get; set; }
+
+    [JsonPropertyName("redemptionStatus")]
+    public string? RedemptionStatus { get; set; }
+
+    [JsonPropertyName("redeemedAt")]
+    public DateTime? RedeemedAt { get; set; }
+}
+
+public class LoyaltyAdminStatsResponse
+{
+    [JsonPropertyName("systemsCount")]
+    public int SystemsCount { get; set; }
+
+    [JsonPropertyName("rulesCount")]
+    public int RulesCount { get; set; }
+
+    [JsonPropertyName("pendingRedemptions")]
+    public int PendingRedemptions { get; set; }
+}
+
+public class RedemptionHistoryItemDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("systemId")]
+    public string SystemId { get; set; } = string.Empty;
+
+    [JsonPropertyName("externalUserId")]
+    public string ExternalUserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("rewardName")]
+    public string RewardName { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("pointCost")]
+    public int PointCost { get; set; }
+
+    [JsonPropertyName("redeemedAt")]
+    public DateTime? RedeemedAt { get; set; }
+}
+
+public class PagedRedemptionHistoryResponse
+{
+    [JsonPropertyName("items")]
+    public List<RedemptionHistoryItemDto> Items { get; set; } = new();
+
+    [JsonPropertyName("totalCount")]
+    public int TotalCount { get; set; }
+
+    [JsonPropertyName("page")]
+    public int Page { get; set; }
+
+    [JsonPropertyName("pageSize")]
+    public int PageSize { get; set; }
+}
+
+public class PagedLedgerHistoryResponse
+{
+    [JsonPropertyName("items")]
+    public List<LoyaltyHistoryDto> Items { get; set; } = new();
+
+    [JsonPropertyName("totalCount")]
+    public int TotalCount { get; set; }
+
+    [JsonPropertyName("page")]
+    public int Page { get; set; }
+
+    [JsonPropertyName("pageSize")]
+    public int PageSize { get; set; }
 }

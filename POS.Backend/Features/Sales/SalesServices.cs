@@ -140,10 +140,27 @@ namespace POS.Backend.Features.Sales
                             .FirstOrDefaultAsync(b => b.Id == request.BranchId);
 
                         var merchantName = branch?.Merchant?.Name ?? "DEFAULT";
-                        // Sanitise: uppercase, replace spaces/special chars with underscore
-                        var safeKey = System.Text.RegularExpressions.Regex
-                            .Replace(merchantName.ToUpperInvariant(), @"[^A-Z0-9]", "_");
-                        var derivedEventKey = $"{safeKey}_PURCHASE";
+                        // Derive the Loyalty Engine system ID as "APH_POS_{MERCHANTNAME}"
+                        // e.g. merchant "Unique" → "APH_POS_UNIQUE" matching the registered tenant.
+                        string? systemId = branch?.Merchant?.Name != null
+                            ? "APH_POS_" + System.Text.RegularExpressions.Regex.Replace(branch.Merchant.Name.ToUpperInvariant(), @"[^A-Z0-9]", "_")
+                            : null;
+                        string? apiKey = null;
+                        
+                        string eventKey;
+                        if (!string.IsNullOrWhiteSpace(systemId))
+                        {
+                            // If we have a shop-unique system ID, we use a standard PURCHASE event key 
+                            // because the system ID already scopes it to that merchant.
+                            eventKey = "PURCHASE";
+                        }
+                        else
+                        {
+                            // Sanitise: uppercase, replace spaces/special chars with underscore
+                            var safeKey = System.Text.RegularExpressions.Regex
+                                .Replace(merchantName.ToUpperInvariant(), @"[^A-Z0-9]", "_");
+                            eventKey = $"{safeKey}_PURCHASE";
+                        }
 
                         var cId = customer.Id;
                         var cName = customer.Name;
@@ -158,7 +175,7 @@ namespace POS.Backend.Features.Sales
                             {
                                 using var scope = _scopeFactory.CreateScope();
                                 var loyaltyService = scope.ServiceProvider.GetRequiredService<ILoyaltyServices>();
-                                await loyaltyService.ProcessSaleEventAsync(cId, cName, oAmount, oId, cEmail, cPhone, derivedEventKey);
+                                await loyaltyService.ProcessSaleEventAsync(cId, cName, oAmount, oId, cEmail, cPhone, eventKey, systemId, apiKey);
                             }
                             catch (Exception ex)
                             {

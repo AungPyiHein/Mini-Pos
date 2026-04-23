@@ -13,6 +13,7 @@ namespace POS.Backend.Features.Customers
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
         public string MerchantName { get; set; } = string.Empty;
+        public string? MerchantLoyaltySystemId { get; set; }
     }
 
     public class CreateCustomerRequest
@@ -90,7 +91,8 @@ namespace POS.Backend.Features.Customers
                     Name = c.Name,
                     PhoneNumber = c.PhoneNumber,
                     Email = c.Email,
-                    MerchantName = c.Merchant.Name
+                    MerchantName = c.Merchant.Name,
+                    MerchantLoyaltySystemId = c.Merchant.Id.ToString().ToUpperInvariant()
                 })
                 .ToListAsync();
 
@@ -101,6 +103,7 @@ namespace POS.Backend.Features.Customers
         public async Task<Result<CustomerResponseDto>> GetCustomerByIdAsync(Guid id)
         {
             var customer = await _context.Customers
+                .Include(c => c.Merchant)
                 .FirstOrDefaultAsync(c => c.Id == id && c.DeletedAt == null);
 
             if (customer == null) return Result<CustomerResponseDto>.Failure("Customer not found.");
@@ -116,7 +119,8 @@ namespace POS.Backend.Features.Customers
                 Name = customer.Name,
                 PhoneNumber = customer.PhoneNumber,
                 Email = customer.Email,
-                MerchantName = customer.Merchant.Name
+                MerchantName = customer.Merchant.Name,
+                MerchantLoyaltySystemId = customer.Merchant.Id.ToString().ToUpperInvariant()
             });
         }
 

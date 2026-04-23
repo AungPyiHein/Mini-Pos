@@ -357,6 +357,7 @@
     private bool isError = false;
     private Guid? currentMerchantId;
     private string currentMerchantName = "";
+    private string? currentMerchantLoyaltySystemId = null;
     private bool applyLoyalty = true;
 
     private class CartItem
@@ -399,7 +400,10 @@
             // Load merchant name for event key derivation
             var merchantRes = await MerchantService.GetMerchantByIdAsync(mId);
             if (merchantRes?.IsSuccess == true && merchantRes.Data != null)
+            {
                 currentMerchantName = merchantRes.Data.Name;
+                currentMerchantLoyaltySystemId = merchantRes.Data.LoyaltySystemId;
+            }
         }
 
         // For Staff: load inventory first (from their locked branch) so products show correct stock
@@ -465,10 +469,17 @@
 
     private decimal CalculateEarnedPoints()
     {
-        // Derive the same EventKey the backend will use: PURCHASE_{MERCHANT_NAME_SANITISED}
-        var safeKey = System.Text.RegularExpressions.Regex
-            .Replace((currentMerchantName.Length > 0 ? currentMerchantName : "DEFAULT").ToUpperInvariant(), @"[^A-Z0-9]", "_");
-        var eventKey = $"{safeKey}_PURCHASE";
+        string eventKey;
+        if (!string.IsNullOrWhiteSpace(currentMerchantLoyaltySystemId))
+        {
+            eventKey = "PURCHASE";
+        }
+        else
+        {
+            var safeKey = System.Text.RegularExpressions.Regex
+                .Replace((currentMerchantName.Length > 0 ? currentMerchantName : "DEFAULT").ToUpperInvariant(), @"[^A-Z0-9]", "_");
+            eventKey = $"{safeKey}_PURCHASE";
+        }
 
         // Try merchant-specific rule first, then fall back to any active PURCHASE-like rule
         var rule = LoyaltyRules.FirstOrDefault(r => r.IsActive && r.EventKey == eventKey)
@@ -494,10 +505,13 @@
             var current = selectedCustomerLoyalty.CurrentBalance;
             var afterSale = current + (applyLoyalty ? CalculateEarnedPoints() : 0);
 
-            var prefix = GetRewardPrefix(currentMerchantName);
-            var merchantRewards = string.IsNullOrEmpty(prefix)
+            // If a unique SystemId is used, the backend already filters rewards. 
+            // Only use prefix filtering if we're on the default/shared system.
+            var merchantRewards = !string.IsNullOrWhiteSpace(currentMerchantLoyaltySystemId)
                 ? ActiveRewards
-                : ActiveRewards.Where(r => r.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
+                : (string.IsNullOrEmpty(GetRewardPrefix(currentMerchantName)) 
+                    ? ActiveRewards 
+                    : ActiveRewards.Where(r => r.Name.StartsWith(GetRewardPrefix(currentMerchantName), StringComparison.OrdinalIgnoreCase)).ToList());
 
             reachableNow       = merchantRewards.Where(r => r.IsActive && r.PointCost <= current).ToList();
             reachableAfterSale = merchantRewards.Where(r => r.IsActive && r.PointCost > current && r.PointCost <= afterSale).ToList();
@@ -563,9 +577,17 @@
     }
 
     // Returns "SHOPNAME: " prefix (same logic as Customers.razor)
-    private static string GetRewardPrefix(string merchantName)
+    // Returns "SHOPNAME: " prefix
+    // Returns "SHOPNAME: " prefix
+    private static string GetRewardPrefix(string merchantName, string? loyaltySystemId = null)
     {
-        if (string.IsNullOrWhiteSpace(merchantName)) return "";
+        // If we have a unique system ID, we don't need name-based prefixes anymore
+        if (!string.IsNullOrWhiteSpace(loyaltySystemId))
+        {
+            return null;
+        }
+        
+        if (string.IsNullOrWhiteSpace(merchantName)) return null;
         var safe = System.Text.RegularExpressions.Regex
             .Replace(merchantName.ToUpperInvariant(), @"[^A-Z0-9]", "_");
         return safe + ": ";

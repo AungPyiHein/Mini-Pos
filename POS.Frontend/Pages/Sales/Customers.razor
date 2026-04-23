@@ -390,38 +390,59 @@
 
                 @if (ActiveRewards.Any())
                 {
-                    var merchantPrefix = GetRewardPrefix(SelectedCustomerDetails?.MerchantName ?? "");
-                    var visibleRewards = string.IsNullOrEmpty(merchantPrefix)
-                        ? ActiveRewards
-                        : ActiveRewards.Where(r => r.Name.StartsWith(merchantPrefix, StringComparison.OrdinalIgnoreCase)).ToList();
+                    var isSystemAdmin = UserRole == "Admin";
+                    var merchantName = SelectedCustomerDetails?.MerchantName ?? "";
+                    var merchantSystemId = SelectedCustomerDetails?.MerchantLoyaltySystemId;
+                    
+                    // Filter rewards: Only Admin sees everything. 
+                    // If a unique system ID is used, the backend already scoped the rewards.
+                    // Otherwise, we filter by name prefix for the shared system.
+                    var visibleRewards = isSystemAdmin 
+                        ? ActiveRewards 
+                        : (!string.IsNullOrWhiteSpace(merchantSystemId)
+                            ? ActiveRewards
+                            : ActiveRewards.Where(r => 
+                                r.Name.StartsWith(merchantName + ":", StringComparison.OrdinalIgnoreCase) || 
+                                r.Name.StartsWith(GetRewardPrefix(merchantName), StringComparison.OrdinalIgnoreCase)
+                            ).ToList());
 
-                    <div class="mt-8">
-                        <div class="flex items-center gap-2 mb-4">
-                            <span class="text-base">🎁</span>
-                            <h4 class="text-sm font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-widest">Rewards</h4>
-                            @if (CustomerLoyalty != null)
-                            {
-                                <span class="ml-auto text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">
-                                    @CustomerLoyalty.CurrentBalance.ToString("N0") pts available
-                                </span>
-                            }
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            @foreach (var reward in visibleRewards)
-                            {
+                    @if (visibleRewards.Any())
+                    {
+                        <div class="mt-8">
+                            <div class="flex items-center gap-2 mb-4">
+                                <span class="text-base">🎁</span>
+                                <h4 class="text-sm font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-widest">Rewards (@visibleRewards.Count)</h4>
+                                @if (CustomerLoyalty != null)
+                                {
+                                    <span class="ml-auto text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">
+                                        @CustomerLoyalty.CurrentBalance.ToString("N0") pts available
+                                    </span>
+                                }
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                @foreach (var reward in visibleRewards)
+                                {
                                 var canAfford = CustomerLoyalty != null && CustomerLoyalty.CurrentBalance >= reward.PointCost;
                                 var claimState = GetRewardClaimState(reward.Id);
                                 var isPending  = claimState == RewardClaimState.Pending;
                                 var isSuccess  = claimState == RewardClaimState.Success;
                                 var canCancel  = isPending && PendingTimeoutRewardIds.Contains(reward.Id);
-                                var ptsNeeded  = CustomerLoyalty != null ? reward.PointCost - CustomerLoyalty.CurrentBalance : reward.PointCost;
+                                var ptsNeeded  = CustomerLoyalty != null ? reward.PointCost - (int)CustomerLoyalty.CurrentBalance : reward.PointCost;
+                                
+                                // Display name: strip "Merchant: " prefix if present, but keep original if split fails
+                                var displayName = reward.Name;
+                                if (reward.Name.Contains(":"))
+                                {
+                                    var parts = reward.Name.Split(':', 2);
+                                    if (parts.Length > 1) displayName = parts[1].Trim();
+                                }
 
-                                <div class="rounded-xl border overflow-hidden transition-all @(isSuccess ? "border-emerald-300/60" : isPending ? "border-yellow-300/60" : canAfford ? "border-violet-300/40 shadow-sm shadow-violet-100 dark:shadow-violet-900/20" : "border-gray-200 dark:border-gray-700 opacity-70")">
+                                <div class="rounded-xl border overflow-hidden transition-all @(isSuccess ? "border-emerald-300/60 shadow-md" : isPending ? "border-yellow-300/60 shadow-md" : canAfford ? "border-violet-300/40 shadow-sm shadow-violet-100 dark:shadow-violet-900/20" : "border-gray-200 dark:border-gray-700 opacity-70")">
                                     <!-- Card header gradient -->
                                     <div class="px-4 pt-4 pb-3 @(isSuccess ? "bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20" : isPending ? "bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20" : canAfford ? "bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20" : "bg-gray-50 dark:bg-gray-800/40")">
                                         <div class="flex justify-between items-start">
                                             <h5 class="font-bold text-sm text-gray-900 dark:text-gray-100 leading-tight">
-                                                @(reward.Name.Contains(": ") ? reward.Name.Split(": ", 2)[1] : reward.Name)
+                                                @displayName
                                             </h5>
                                             <span class="ml-2 shrink-0 text-xs font-extrabold @(canAfford ? "text-violet-600 dark:text-violet-400" : "text-gray-500") bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded-md border border-current/20">
                                                 @reward.PointCost.ToString("N0") pts
@@ -430,6 +451,10 @@
                                         @if (!string.IsNullOrEmpty(reward.Description))
                                         {
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">@reward.Description</p>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-[10px] text-gray-400 italic mt-1">Available for redemption</p>
                                         }
                                         <!-- Affordability badge -->
                                         <div class="mt-2">
@@ -473,6 +498,19 @@
                                                 }
                                             </div>
                                         }
+                                        else if (claimState == RewardClaimState.Failed)
+                                        {
+                                            <div class="space-y-2">
+                                                <div class="flex items-start gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/30 text-red-700 dark:text-red-400 text-xs font-semibold">
+                                                    <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                                                    <span>@(RewardClaimErrors.TryGetValue(reward.Id, out var errMsg) ? errMsg : "Claim failed. No points were consumed.")</span>
+                                                </div>
+                                                <button class="w-full py-1.5 text-xs rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 font-semibold transition-colors"
+                                                        @onclick="() => { RewardClaimStates[reward.Id] = RewardClaimState.Idle; RewardClaimErrors.Remove(reward.Id); StateHasChanged(); }">
+                                                    Dismiss
+                                                </button>
+                                            </div>
+                                        }
                                         else
                                         {
                                             <button class="w-full py-2 text-xs font-bold rounded-xl transition-all
@@ -486,8 +524,56 @@
                                         }
                                     </div>
                                 </div>
-                            }
+                                }
+                            </div>
                         </div>
+                    }
+                }
+
+                @if (IsHistoryLoading)
+                {
+                    <div class="text-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"></div>
+                        <p class="text-xs text-muted mt-2">Loading loyalty history...</p>
+                    </div>
+                }
+                else if (CustomerLoyaltyHistory != null && CustomerLoyaltyHistory.Any())
+                {
+                    <div class="mt-8">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="text-base">🕒</span>
+                            <h4 class="text-sm font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-widest">Points History</h4>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Activity</th>
+                                    <th class="text-right">Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in CustomerLoyaltyHistory.OrderByDescending(h => h.CreatedAt))
+                                {
+                                    <tr>
+                                        <td class="text-xs text-muted whitespace-nowrap">@item.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                        <td class="font-medium text-gray-800 dark:text-gray-200">
+                                            @if (!string.IsNullOrEmpty(item.RewardName))
+                                            {
+                                                <span>Claimed @item.RewardName</span>
+                                            }
+                                            else
+                                            {
+                                                @item.Description
+                                            }
+                                        </td>
+                                        <td class="text-right font-semibold @(item.PointDelta > 0 ? "text-emerald-500" : "text-red-500")">
+                                            @(item.PointDelta > 0 ? "+" : "")@item.PointDelta.ToString("N0")
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 }
             </div>
@@ -518,12 +604,15 @@
     private CustomerResponseDto? SelectedCustomerDetails;
     private LoyaltyAccountResponse? CustomerLoyalty;
     private List<LoyaltyReward> ActiveRewards = new();
+    private List<LoyaltyHistoryDto> CustomerLoyaltyHistory = new();
     private bool IsLoyaltyLoading = false;
+    private bool IsHistoryLoading = false;
     private bool IsClaiming = false;
 
     // Reward claim state tracking
-    private enum RewardClaimState { Idle, Pending, Success }
+    private enum RewardClaimState { Idle, Pending, Success, Failed }
     private Dictionary<Guid, RewardClaimState> RewardClaimStates = new();
+    private Dictionary<Guid, string> RewardClaimErrors = new();
     private HashSet<Guid> PendingTimeoutRewardIds = new();
     private Dictionary<Guid, CancellationTokenSource> ClaimCancellationTokens = new();
     private const int ClaimTimeoutSeconds = 8;
@@ -533,9 +622,15 @@
         RewardClaimStates.TryGetValue(rewardId, out var s) ? s : RewardClaimState.Idle;
 
     // Returns "SHOPNAME: " prefix from a merchant name (e.g. "My Café" → "MY_CAF_: ")
-    private static string GetRewardPrefix(string merchantName)
+    private static string GetRewardPrefix(string merchantName, string? loyaltySystemId = null)
     {
-        if (string.IsNullOrWhiteSpace(merchantName)) return "";
+        // If we have a unique system ID, we don't need name-based prefixes anymore
+        if (!string.IsNullOrWhiteSpace(loyaltySystemId))
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(merchantName)) return null;
         var safe = System.Text.RegularExpressions.Regex
             .Replace(merchantName.ToUpperInvariant(), @"[^A-Z0-9]", "_");
         return safe + ": ";
@@ -746,11 +841,14 @@
 
         // Fetch loyalty data
         IsLoyaltyLoading = true;
+        IsHistoryLoading = true;
         CustomerLoyalty = null;
+        CustomerLoyaltyHistory = new();
         
         var loyaltyTask = CustomerService.GetCustomerLoyaltyAsync(customer.Id);
         var rewardsTask = CustomerService.GetActiveRewardsAsync();
-        await Task.WhenAll(loyaltyTask, rewardsTask);
+        var historyTask = CustomerService.GetCustomerHistoryAsync(customer.Id);
+        await Task.WhenAll(loyaltyTask, rewardsTask, historyTask);
 
         if (loyaltyTask.Result.IsSuccess)
         {
@@ -762,7 +860,13 @@
             ActiveRewards = rewardsTask.Result.Data ?? new();
         }
 
+        if (historyTask.Result.IsSuccess)
+        {
+            CustomerLoyaltyHistory = historyTask.Result.Data ?? new();
+        }
+
         IsLoyaltyLoading = false;
+        IsHistoryLoading = false;
         StateHasChanged();
     }
 
@@ -771,12 +875,9 @@
         if (SelectedCustomerDetails == null || CustomerLoyalty == null) return;
         if (RewardClaimStates.TryGetValue(reward.Id, out var existing) && existing == RewardClaimState.Pending) return;
 
-        // Set up a cancellation token so we can cancel polling
-        var cts = new CancellationTokenSource();
-        ClaimCancellationTokens[reward.Id] = cts;
-
         IsClaiming = true;
         RewardClaimStates[reward.Id] = RewardClaimState.Pending;
+        RewardClaimErrors.Remove(reward.Id);
         PendingTimeoutRewardIds.Remove(reward.Id);
         StateHasChanged();
 
@@ -788,9 +889,11 @@
             Notes = $"Claimed via POS Terminal by {SelectedCustomerDetails.Name}"
         });
 
+        IsClaiming = false;
+
         if (response.IsSuccess)
         {
-            // Mark success immediately if API confirms
+            // Claim succeeded — points are consumed, reward is fulfilled
             RewardClaimStates[reward.Id] = RewardClaimState.Success;
             PendingTimeoutRewardIds.Remove(reward.Id);
 
@@ -799,12 +902,10 @@
             if (loyaltyRes.IsSuccess)
             {
                 CustomerLoyalty = loyaltyRes.Data;
-                // Also refresh the points in the main list
                 if (SelectedCustomerDetails != null)
                     CustomerPoints[SelectedCustomerDetails.Id] = loyaltyRes.Data?.CurrentBalance;
             }
 
-            IsClaiming = false;
             StateHasChanged();
 
             // Auto-dismiss success banner after 5s
@@ -818,62 +919,13 @@
         }
         else
         {
-            // API returned failure — stay pending and start polling + timeout
-            IsClaiming = false;
+            // Claim FAILED — no points were consumed by the Loyalty Engine.
+            // Show an error immediately; do NOT enter polling/pending state.
+            RewardClaimStates[reward.Id] = RewardClaimState.Failed;
+            RewardClaimErrors[reward.Id] = !string.IsNullOrWhiteSpace(response.Message)
+                ? response.Message
+                : "Reward service unavailable. No points were consumed.";
             StateHasChanged();
-
-            // Start timeout timer — show Cancel after ClaimTimeoutSeconds
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(ClaimTimeoutSeconds * 1000, cts.Token).ContinueWith(_ => { });
-                if (!cts.IsCancellationRequested &&
-                    RewardClaimStates.TryGetValue(reward.Id, out var s) &&
-                    s == RewardClaimState.Pending)
-                {
-                    PendingTimeoutRewardIds.Add(reward.Id);
-                    await InvokeAsync(StateHasChanged);
-                }
-            });
-
-            // Poll for success
-            _ = Task.Run(async () =>
-            {
-                while (!cts.IsCancellationRequested)
-                {
-                    await Task.Delay(ClaimPollIntervalMs);
-                    if (cts.IsCancellationRequested) break;
-                    if (!RewardClaimStates.TryGetValue(reward.Id, out var s) || s != RewardClaimState.Pending) break;
-
-                    try
-                    {
-                        var loyaltyRes = await CustomerService.GetCustomerLoyaltyAsync(SelectedCustomerDetails!.Id);
-                        if (loyaltyRes.IsSuccess && loyaltyRes.Data != null)
-                        {
-                            var newBalance = loyaltyRes.Data.CurrentBalance;
-                            var oldBalance = CustomerLoyalty?.CurrentBalance ?? 0;
-
-                            // If balance decreased by approximately the point cost, treat as success
-                            if (oldBalance - newBalance >= reward.PointCost * 0.9m)
-                            {
-                                RewardClaimStates[reward.Id] = RewardClaimState.Success;
-                                PendingTimeoutRewardIds.Remove(reward.Id);
-                                cts.Cancel();
-                                CustomerLoyalty = loyaltyRes.Data;
-                                CustomerPoints[SelectedCustomerDetails.Id] = loyaltyRes.Data.CurrentBalance;
-                                await InvokeAsync(StateHasChanged);
-
-                                // Auto-dismiss after 5s
-                                await Task.Delay(5000);
-                                if (RewardClaimStates.TryGetValue(reward.Id, out var ss) && ss == RewardClaimState.Success)
-                                    RewardClaimStates[reward.Id] = RewardClaimState.Idle;
-                                await InvokeAsync(StateHasChanged);
-                                break;
-                            }
-                        }
-                    }
-                    catch { /* ignore poll errors */ }
-                }
-            });
         }
     }
 
@@ -896,6 +948,7 @@
             cts.Cancel();
         ClaimCancellationTokens.Clear();
         RewardClaimStates.Clear();
+        RewardClaimErrors.Clear();
         PendingTimeoutRewardIds.Clear();
 
         ShowDetailsModal = false;

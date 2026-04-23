@@ -6,20 +6,24 @@ namespace POS.Backend.Features.Loyalty
 {
     public interface ILoyaltyServices
     {
-        Task<Result<bool>> ProcessSaleEventAsync(Guid customerId, string customerName, decimal amount, Guid orderId, string? email = null, string? mobile = null, string? eventKey = null);
-        Task<Result<LoyaltyAccountResponse>> GetCustomerLoyaltyAsync(Guid customerId);
-        Task<Result<List<LoyaltyReward>>> GetActiveRewardsAsync();
-        Task<Result<bool>> ClaimRewardAsync(Guid customerId, Guid rewardId, string? notes = null);
-        Task<Result<List<LoyaltyRuleDto>>> GetActiveRulesAsync();
+        Task<Result<bool>> ProcessSaleEventAsync(Guid customerId, string customerName, decimal amount, Guid orderId, string? email = null, string? mobile = null, string? eventKey = null, string? systemId = null, string? apiKey = null);
+        Task<Result<LoyaltyAccountResponse>> GetCustomerLoyaltyAsync(Guid customerId, string? systemId = null, string? apiKey = null);
+        Task<Result<List<LoyaltyReward>>> GetActiveRewardsAsync(string? systemId = null, string? apiKey = null);
+        Task<Result<bool>> ClaimRewardAsync(Guid customerId, Guid rewardId, string? notes = null, string? systemId = null, string? apiKey = null);
+        Task<Result<List<LoyaltyRuleDto>>> GetActiveRulesAsync(string? systemId = null, string? apiKey = null);
+        Task<Result<List<LoyaltyHistoryDto>>> GetCustomerHistoryAsync(Guid customerId, string? systemId = null, string? apiKey = null);
+        Task<Result<LoyaltyAdminStatsResponse>> GetAdminStatsAsync();
+        Task<Result<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null, string? systemId = null, string? apiKey = null);
+        Task<Result<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(int page = 1, int pageSize = 10, string? searchTerm = null, string? systemId = null, string? apiKey = null);
     }
 
     public class LoyaltySettings
     {
         public string BaseUrl { get; set; } = string.Empty;
         public string SystemId { get; set; } = string.Empty;
+        public string? ApiKey { get; set; }
         public string DefaultEventKey { get; set; } = "PURCHASE";
     }
-
 
     public class LoyaltyServices : ILoyaltyServices
     {
@@ -37,18 +41,34 @@ namespace POS.Backend.Features.Loyalty
             {
                 _httpClient.BaseAddress = new Uri(_settings.BaseUrl);
             }
-            
-            if (!_httpClient.DefaultRequestHeaders.Contains("x-system-id"))
-            {
-                _httpClient.DefaultRequestHeaders.Add("x-system-id", _settings.SystemId);
-            }
         }
 
-        public async Task<Result<bool>> ProcessSaleEventAsync(Guid customerId, string customerName, decimal amount, Guid orderId, string? email = null, string? mobile = null, string? eventKey = null)
+        private async Task<HttpResponseMessage> SendWithHeadersAsync(HttpMethod method, string url, object? body = null, string? systemId = null, string? apiKey = null)
+        {
+            var request = new HttpRequestMessage(method, url);
+            
+            var targetSystemId = !string.IsNullOrWhiteSpace(systemId) ? systemId : _settings.SystemId;
+            var targetApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _settings.ApiKey;
+
+            if (!string.IsNullOrWhiteSpace(targetSystemId))
+                request.Headers.Add("x-system-id", targetSystemId);
+            
+            if (!string.IsNullOrWhiteSpace(targetApiKey))
+                request.Headers.Add("x-api-key", targetApiKey);
+
+            if (body != null)
+            {
+                request.Content = JsonContent.Create(body);
+            }
+
+            return await _httpClient.SendAsync(request);
+        }
+
+        public async Task<Result<bool>> ProcessSaleEventAsync(Guid customerId, string customerName, decimal amount, Guid orderId, string? email = null, string? mobile = null, string? eventKey = null, string? systemId = null, string? apiKey = null)
         {
             try
             {
-                var request = new LoyaltyEventProcessRequest
+                var eventProcessRequest = new LoyaltyEventProcessRequest
                 {
                     ExternalUserId = customerId.ToString(),
                     EventKey = eventKey ?? _settings.DefaultEventKey,
@@ -59,7 +79,7 @@ namespace POS.Backend.Features.Loyalty
                     Mobile = mobile
                 };
 
-                var response = await _httpClient.PostAsJsonAsync("api/v1/events/process", request);
+                var response = await SendWithHeadersAsync(HttpMethod.Post, "api/v1/events/process", eventProcessRequest, systemId, apiKey);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -67,58 +87,52 @@ namespace POS.Backend.Features.Loyalty
                 }
 
                 var error = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Loyalty API Error processing event for customer {CustomerId} (Order {OrderId}): {Status} - {Error}", 
-                    customerId, orderId, response.StatusCode, error);
+                _logger.LogError("Loyalty API Error processing event: {Status} - {Error}", response.StatusCode, error);
                 return Result<bool>.Failure($"Loyalty API error: {response.StatusCode} - {error}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process loyalty event for customer {CustomerId} (Order {OrderId}) at {Url}", 
-                    customerId, orderId, _httpClient.BaseAddress);
+                _logger.LogError(ex, "Failed to process loyalty event");
                 return Result<bool>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
             }
         }
 
-        public async Task<Result<LoyaltyAccountResponse>> GetCustomerLoyaltyAsync(Guid customerId)
+        public async Task<Result<LoyaltyAccountResponse>> GetCustomerLoyaltyAsync(Guid customerId, string? systemId = null, string? apiKey = null)
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/v1/accounts/lookup/{_settings.SystemId}/{customerId}");
+                var targetSystemId = !string.IsNullOrWhiteSpace(systemId) ? systemId : _settings.SystemId;
+                var response = await SendWithHeadersAsync(HttpMethod.Get, $"api/v1/accounts/lookup/{targetSystemId}/{customerId}", null, systemId, apiKey);
 
                 if (response.IsSuccessStatusCode)
                 {
                     var account = await response.Content.ReadFromJsonAsync<LoyaltyAccountResponse>();
-                    return account != null ? Result<LoyaltyAccountResponse>.Success(account) : Result<LoyaltyAccountResponse>.Failure("Empty response from Loyalty API");
+                    return account != null ? Result<LoyaltyAccountResponse>.Success(account) : Result<LoyaltyAccountResponse>.Failure("Empty response");
                 }
 
-                var errorContent = await response.Content.ReadAsStringAsync();
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    _logger.LogWarning("Customer loyalty account not found for {CustomerId}", customerId);
                     return Result<LoyaltyAccountResponse>.Failure("Customer loyalty account not found");
-                }
 
-                _logger.LogError("Loyalty API Error fetching account for {CustomerId}: {Status} - {Error}", 
-                    customerId, response.StatusCode, errorContent);
                 return Result<LoyaltyAccountResponse>.Failure($"Loyalty API error: {response.StatusCode}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch loyalty account for {CustomerId}", customerId);
+                _logger.LogError(ex, "Failed to fetch loyalty account");
                 return Result<LoyaltyAccountResponse>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
             }
         }
 
-        public async Task<Result<List<LoyaltyReward>>> GetActiveRewardsAsync()
+        public async Task<Result<List<LoyaltyReward>>> GetActiveRewardsAsync(string? systemId = null, string? apiKey = null)
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/v1/rewards/active/{_settings.SystemId}");
+                var targetSystemId = !string.IsNullOrWhiteSpace(systemId) ? systemId : _settings.SystemId;
+                var response = await SendWithHeadersAsync(HttpMethod.Get, $"api/v1/rewards/active/{targetSystemId}", null, systemId, apiKey);
 
                 if (response.IsSuccessStatusCode)
                 {
                     var rewards = await response.Content.ReadFromJsonAsync<List<LoyaltyReward>>();
-                    return rewards != null ? Result<List<LoyaltyReward>>.Success(rewards) : Result<List<LoyaltyReward>>.Failure("Empty response from Loyalty API");
+                    return rewards != null ? Result<List<LoyaltyReward>>.Success(rewards) : Result<List<LoyaltyReward>>.Failure("Empty response");
                 }
 
                 return Result<List<LoyaltyReward>>.Failure($"Loyalty API error: {response.StatusCode}");
@@ -130,52 +144,217 @@ namespace POS.Backend.Features.Loyalty
             }
         }
 
-        public async Task<Result<bool>> ClaimRewardAsync(Guid customerId, Guid rewardId, string? notes = null)
+        public async Task<Result<bool>> ClaimRewardAsync(Guid customerId, Guid rewardId, string? notes = null, string? systemId = null, string? apiKey = null)
         {
             try
             {
-                var request = new
+                var body = new
                 {
                     externalUserId = customerId.ToString(),
                     rewardId = rewardId,
                     notes = notes
                 };
 
-                var response = await _httpClient.PostAsJsonAsync("api/v1/redemption/claim", request);
+                var claimResponse = await SendWithHeadersAsync(HttpMethod.Post, "api/v1/redemption/claim", body, systemId, apiKey);
 
-                if (response.IsSuccessStatusCode)
+                if (!claimResponse.IsSuccessStatusCode)
                 {
-                    return Result<bool>.Success(true);
+                    var error = await claimResponse.Content.ReadAsStringAsync();
+                    return Result<bool>.Failure($"Loyalty claim error: {error}");
                 }
 
-                var error = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Loyalty Claim Error: {Error}", error);
-                return Result<bool>.Failure($"Loyalty claim error: {error}");
+                // Auto-fulfill: find the newly created pending redemption and mark it Fulfilled
+                await AutoFulfillRedemptionAsync(customerId, rewardId, systemId, apiKey);
+
+                return Result<bool>.Success(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to claim reward");
                 return Result<bool>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
             }
         }
-        public async Task<Result<List<LoyaltyRuleDto>>> GetActiveRulesAsync()
+
+        private async Task AutoFulfillRedemptionAsync(Guid customerId, Guid rewardId, string? systemId, string? apiKey)
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/v1/admin/rules");
+                var pendingResponse = await SendWithHeadersAsync(HttpMethod.Get, "api/v1/admin/redemptions/pending", null, systemId, apiKey);
+                if (!pendingResponse.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Auto-fulfill: could not fetch pending redemptions (HTTP {Status})", pendingResponse.StatusCode);
+                    return;
+                }
 
+                var root = await pendingResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+
+                // Support both a raw array [ {...} ] and a wrapped object { items: [...] }
+                System.Text.Json.JsonElement pendingArray = default;
+                if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    pendingArray = root;
+                }
+                else if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    if (root.TryGetProperty("items", out var items) && items.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        pendingArray = items;
+                    else if (root.TryGetProperty("data", out var data) && data.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        pendingArray = data;
+                }
+
+                if (pendingArray.ValueKind != System.Text.Json.JsonValueKind.Array)
+                {
+                    _logger.LogWarning("Auto-fulfill: unexpected pending redemptions response shape");
+                    return;
+                }
+
+                foreach (var pending in pendingArray.EnumerateArray())
+                {
+                    // Safely read externalUserId
+                    if (!pending.TryGetProperty("externalUserId", out var userIdProp) ||
+                        userIdProp.GetString() != customerId.ToString())
+                        continue;
+
+                    // Safely read rewardId (may be Guid or string)
+                    Guid pendingRewardId = Guid.Empty;
+                    if (pending.TryGetProperty("rewardId", out var rewardIdProp))
+                    {
+                        if (rewardIdProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                            Guid.TryParse(rewardIdProp.GetString(), out pendingRewardId);
+                        else
+                            rewardIdProp.TryGetGuid(out pendingRewardId);
+                    }
+
+                    if (pendingRewardId != rewardId) continue;
+
+                    // Safely read redemption id
+                    if (!pending.TryGetProperty("id", out var idProp) || !idProp.TryGetGuid(out var redemptionId))
+                    {
+                        _logger.LogWarning("Auto-fulfill: matched pending redemption has no valid 'id'");
+                        continue;
+                    }
+
+                    var fulfillResponse = await SendWithHeadersAsync(
+                        HttpMethod.Put,
+                        $"api/v1/admin/redemptions/{redemptionId}/status",
+                        new { status = "Fulfilled" },
+                        systemId, apiKey);
+
+                    if (fulfillResponse.IsSuccessStatusCode)
+                        _logger.LogInformation("Auto-fulfill: redemption {RedemptionId} fulfilled for customer {CustomerId}", redemptionId, customerId);
+                    else
+                        _logger.LogWarning("Auto-fulfill: failed to fulfill redemption {RedemptionId} (HTTP {Status})", redemptionId, fulfillResponse.StatusCode);
+
+                    break; // only fulfill the first match
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Auto-fulfill: unexpected error during auto-fulfillment for customer {CustomerId}, reward {RewardId}", customerId, rewardId);
+            }
+        }
+
+        public async Task<Result<List<LoyaltyRuleDto>>> GetActiveRulesAsync(string? systemId = null, string? apiKey = null)
+        {
+            try
+            {
+                var response = await SendWithHeadersAsync(HttpMethod.Get, "api/v1/admin/rules", null, systemId, apiKey);
                 if (response.IsSuccessStatusCode)
                 {
                     var rules = await response.Content.ReadFromJsonAsync<List<LoyaltyRuleDto>>();
-                    return rules != null ? Result<List<LoyaltyRuleDto>>.Success(rules) : Result<List<LoyaltyRuleDto>>.Failure("Empty response from Loyalty API");
+                    return rules != null ? Result<List<LoyaltyRuleDto>>.Success(rules) : Result<List<LoyaltyRuleDto>>.Failure("Empty response");
                 }
-
                 return Result<List<LoyaltyRuleDto>>.Failure($"Loyalty API error: {response.StatusCode}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch active rules");
                 return Result<List<LoyaltyRuleDto>>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<List<LoyaltyHistoryDto>>> GetCustomerHistoryAsync(Guid customerId, string? systemId = null, string? apiKey = null)
+        {
+            try
+            {
+                var accountResult = await GetCustomerLoyaltyAsync(customerId, systemId, apiKey);
+                if (!accountResult.IsSuccess || accountResult.Value == null)
+                    return Result<List<LoyaltyHistoryDto>>.Failure(accountResult.Error ?? "Account not found");
+
+                var accountId = accountResult.Value.AccountId != Guid.Empty ? accountResult.Value.AccountId : accountResult.Value.Id;
+                var response = await SendWithHeadersAsync(HttpMethod.Get, $"api/v1/accounts/{accountId}/history", null, systemId, apiKey);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var history = await response.Content.ReadFromJsonAsync<List<LoyaltyHistoryDto>>();
+                    return history != null ? Result<List<LoyaltyHistoryDto>>.Success(history) : Result<List<LoyaltyHistoryDto>>.Failure("Empty response");
+                }
+                return Result<List<LoyaltyHistoryDto>>.Failure($"Loyalty API error: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                return Result<List<LoyaltyHistoryDto>>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<LoyaltyAdminStatsResponse>> GetAdminStatsAsync()
+        {
+            try
+            {
+                var response = await SendWithHeadersAsync(HttpMethod.Get, "api/v1/admin/stats");
+                if (response.IsSuccessStatusCode)
+                {
+                    var stats = await response.Content.ReadFromJsonAsync<LoyaltyAdminStatsResponse>();
+                    return stats != null ? Result<LoyaltyAdminStatsResponse>.Success(stats) : Result<LoyaltyAdminStatsResponse>.Failure("Empty response");
+                }
+                return Result<LoyaltyAdminStatsResponse>.Failure($"Loyalty API error: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                return Result<LoyaltyAdminStatsResponse>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null, string? systemId = null, string? apiKey = null)
+        {
+            try
+            {
+                var targetSystemId = !string.IsNullOrWhiteSpace(systemId) ? systemId : _settings.SystemId;
+                var url = $"api/v1/admin/redemptions/history?SystemId={targetSystemId}&Page={page}&PageSize={pageSize}";
+                if (!string.IsNullOrEmpty(status)) url += $"&Status={status}";
+                if (!string.IsNullOrEmpty(searchTerm)) url += $"&SearchTerm={searchTerm}";
+
+                var response = await SendWithHeadersAsync(HttpMethod.Get, url, null, systemId, apiKey);
+                if (response.IsSuccessStatusCode)
+                {
+                    var history = await response.Content.ReadFromJsonAsync<PagedRedemptionHistoryResponse>();
+                    return history != null ? Result<PagedRedemptionHistoryResponse>.Success(history) : Result<PagedRedemptionHistoryResponse>.Failure("Empty response");
+                }
+                return Result<PagedRedemptionHistoryResponse>.Failure($"Loyalty API error: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                return Result<PagedRedemptionHistoryResponse>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(int page = 1, int pageSize = 10, string? searchTerm = null, string? systemId = null, string? apiKey = null)
+        {
+            try
+            {
+                var targetSystemId = !string.IsNullOrWhiteSpace(systemId) ? systemId : _settings.SystemId;
+                var url = $"api/v1/admin/ledger/search-paged?SystemId={targetSystemId}&Page={page}&PageSize={pageSize}";
+                if (!string.IsNullOrEmpty(searchTerm)) url += $"&SearchTerm={searchTerm}";
+
+                var response = await SendWithHeadersAsync(HttpMethod.Get, url, null, systemId, apiKey);
+                if (response.IsSuccessStatusCode)
+                {
+                    var history = await response.Content.ReadFromJsonAsync<PagedLedgerHistoryResponse>();
+                    return history != null ? Result<PagedLedgerHistoryResponse>.Success(history) : Result<PagedLedgerHistoryResponse>.Failure("Empty response");
+                }
+                return Result<PagedLedgerHistoryResponse>.Failure($"Loyalty API error: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                return Result<PagedLedgerHistoryResponse>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
             }
         }
     }
