@@ -13,13 +13,14 @@ public interface ICustomerService
     Task<ApiResponse> UpdateCustomerAsync(Guid id, CreateCustomerRequest request);
     Task<ApiResponse> DeleteCustomerAsync(Guid id);
     Task<ApiResponse<LoyaltyAccountResponse>> GetCustomerLoyaltyAsync(Guid customerId);
-    Task<ApiResponse<List<LoyaltyReward>>> GetActiveRewardsAsync();
+    Task<ApiResponse<List<LoyaltyReward>>> GetActiveRewardsAsync(Guid? customerId = null, Guid? merchantId = null);
     Task<ApiResponse<bool>> ClaimRewardAsync(ClaimRewardRequest request);
     Task<ApiResponse<List<LoyaltyRuleDto>>> GetLoyaltyRulesAsync();
     Task<ApiResponse<List<LoyaltyHistoryDto>>> GetCustomerHistoryAsync(Guid customerId);
-    Task<ApiResponse<LoyaltyAdminStatsResponse>> GetAdminStatsAsync();
-    Task<ApiResponse<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null);
-    Task<ApiResponse<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(int page = 1, int pageSize = 10, string? searchTerm = null);
+    Task<ApiResponse<LoyaltyAdminStatsResponse>> GetAdminStatsAsync(Guid? merchantId = null);
+    Task<ApiResponse<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(Guid? merchantId = null, int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null);
+    Task<ApiResponse<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(Guid? merchantId = null, int page = 1, int pageSize = 10, string? searchTerm = null);
+    Task<ApiResponse<bool>> FulfillRedemptionAsync(Guid redemptionId, Guid? merchantId = null);
 }
 public class CustomerService : ICustomerService
 {
@@ -129,11 +130,28 @@ public class CustomerService : ICustomerService
         }
     }
 
-    public async Task<ApiResponse<List<LoyaltyReward>>> GetActiveRewardsAsync()
+    public async Task<ApiResponse<List<LoyaltyReward>>> GetActiveRewardsAsync(Guid? customerId = null, Guid? merchantId = null)
     {
         try
         {
-            var response = await _http.GetFromJsonAsync<Result<List<LoyaltyReward>>>($"/api/v1/loyalty/rewards");
+            var queryParts = new List<string>();
+            if (customerId.HasValue && customerId.Value != Guid.Empty)
+            {
+                queryParts.Add($"customerId={customerId.Value}");
+            }
+
+            if (merchantId.HasValue && merchantId.Value != Guid.Empty)
+            {
+                queryParts.Add($"merchantId={merchantId.Value}");
+            }
+
+            var url = "/api/v1/loyalty/rewards";
+            if (queryParts.Count > 0)
+            {
+                url += "?" + string.Join("&", queryParts);
+            }
+
+            var response = await _http.GetFromJsonAsync<Result<List<LoyaltyReward>>>(url);
             if (response != null && response.IsSuccess)
             {
                 return new ApiResponse<List<LoyaltyReward>> { IsSuccess = true, Data = response.Value };
@@ -198,11 +216,17 @@ public class CustomerService : ICustomerService
         }
     }
 
-    public async Task<ApiResponse<LoyaltyAdminStatsResponse>> GetAdminStatsAsync()
+    public async Task<ApiResponse<LoyaltyAdminStatsResponse>> GetAdminStatsAsync(Guid? merchantId = null)
     {
         try
         {
-            var response = await _http.GetFromJsonAsync<Result<LoyaltyAdminStatsResponse>>("/api/v1/loyalty/admin/stats");
+            var url = "/api/v1/loyalty/admin/stats";
+            if (merchantId.HasValue && merchantId.Value != Guid.Empty)
+            {
+                url += $"?merchantId={merchantId.Value}";
+            }
+
+            var response = await _http.GetFromJsonAsync<Result<LoyaltyAdminStatsResponse>>(url);
             if (response != null && response.IsSuccess)
             {
                 return new ApiResponse<LoyaltyAdminStatsResponse> { IsSuccess = true, Data = response.Value };
@@ -215,11 +239,12 @@ public class CustomerService : ICustomerService
         }
     }
 
-    public async Task<ApiResponse<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null)
+    public async Task<ApiResponse<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(Guid? merchantId = null, int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null)
     {
         try
         {
             var url = $"/api/v1/loyalty/admin/redemptions/history?page={page}&pageSize={pageSize}";
+            if (merchantId.HasValue && merchantId.Value != Guid.Empty) url += $"&merchantId={merchantId.Value}";
             if (!string.IsNullOrEmpty(status)) url += $"&status={status}";
             if (!string.IsNullOrEmpty(searchTerm)) url += $"&searchTerm={searchTerm}";
 
@@ -236,11 +261,12 @@ public class CustomerService : ICustomerService
         }
     }
 
-    public async Task<ApiResponse<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(int page = 1, int pageSize = 10, string? searchTerm = null)
+    public async Task<ApiResponse<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(Guid? merchantId = null, int page = 1, int pageSize = 10, string? searchTerm = null)
     {
         try
         {
             var url = $"/api/v1/loyalty/admin/global-ledger?page={page}&pageSize={pageSize}";
+            if (merchantId.HasValue && merchantId.Value != Guid.Empty) url += $"&merchantId={merchantId.Value}";
             if (!string.IsNullOrEmpty(searchTerm)) url += $"&searchTerm={searchTerm}";
 
             var response = await _http.GetFromJsonAsync<Result<PagedLedgerHistoryResponse>>(url);
@@ -253,6 +279,31 @@ public class CustomerService : ICustomerService
         catch (Exception ex)
         {
             return new ApiResponse<PagedLedgerHistoryResponse> { IsSuccess = false, Message = $"Error: {ex.Message}" };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> FulfillRedemptionAsync(Guid redemptionId, Guid? merchantId = null)
+    {
+        try
+        {
+            var url = $"/api/v1/loyalty/admin/redemptions/{redemptionId}/fulfill";
+            if (merchantId.HasValue && merchantId.Value != Guid.Empty)
+            {
+                url += $"?merchantId={merchantId.Value}";
+            }
+
+            var response = await _http.PostAsync(url, null);
+            var result = await response.Content.ReadFromJsonAsync<Result<bool>>();
+            if (result != null && result.IsSuccess)
+            {
+                return new ApiResponse<bool> { IsSuccess = true, Data = true };
+            }
+
+            return new ApiResponse<bool> { IsSuccess = false, Message = result?.Error ?? "Failed to fulfill redemption" };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool> { IsSuccess = false, Message = $"Error: {ex.Message}" };
         }
     }
 }

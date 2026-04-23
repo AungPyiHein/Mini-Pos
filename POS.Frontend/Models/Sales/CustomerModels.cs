@@ -155,6 +155,9 @@ public class RedemptionHistoryItemDto
     [JsonPropertyName("externalUserId")]
     public string ExternalUserId { get; set; } = string.Empty;
 
+    [JsonPropertyName("customerName")]
+    public string? CustomerName { get; set; }
+
     [JsonPropertyName("rewardName")]
     public string RewardName { get; set; } = string.Empty;
 

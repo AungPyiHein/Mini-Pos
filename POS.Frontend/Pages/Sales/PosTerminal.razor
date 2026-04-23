@@ -427,18 +427,14 @@
     private async Task LoadLoyaltyData()
     {
         var rulesTask = CustomerService.GetLoyaltyRulesAsync();
-        var rewardsTask = CustomerService.GetActiveRewardsAsync();
-        await Task.WhenAll(rulesTask, rewardsTask);
+        await Task.WhenAll(rulesTask);
 
         if (rulesTask.Result.IsSuccess && rulesTask.Result.Data != null)
         {
             LoyaltyRules = rulesTask.Result.Data;
         }
 
-        if (rewardsTask.Result.IsSuccess && rewardsTask.Result.Data != null)
-        {
-            ActiveRewards = rewardsTask.Result.Data;
-        }
+        ActiveRewards = new();
     }
 
     private async Task HandleCustomerChange(ChangeEventArgs e)
@@ -449,12 +445,25 @@
         {
             selectedCustomerId = guid;
             selectedCustomerLoyalty = null;
+            ActiveRewards = new();
             reachableNow.Clear();
             reachableAfterSale.Clear();
-            var loyaltyRes = await CustomerService.GetCustomerLoyaltyAsync(guid);
-            if (loyaltyRes.IsSuccess)
+            var loyaltyTask = CustomerService.GetCustomerLoyaltyAsync(guid);
+            var rewardsTask = CustomerService.GetActiveRewardsAsync(customerId: guid);
+            await Task.WhenAll(loyaltyTask, rewardsTask);
+
+            if (loyaltyTask.Result.IsSuccess)
             {
-                selectedCustomerLoyalty = loyaltyRes.Data;
+                selectedCustomerLoyalty = loyaltyTask.Result.Data;
+            }
+
+            if (rewardsTask.Result.IsSuccess && rewardsTask.Result.Data != null)
+            {
+                ActiveRewards = rewardsTask.Result.Data;
+            }
+
+            if (selectedCustomerLoyalty != null)
+            {
                 CalculateReachableRewards();
             }
         }
@@ -462,6 +471,7 @@
         {
             selectedCustomerId = null;
             selectedCustomerLoyalty = null;
+            ActiveRewards = new();
             reachableNow.Clear();
             reachableAfterSale.Clear();
         }
@@ -505,13 +515,8 @@
             var current = selectedCustomerLoyalty.CurrentBalance;
             var afterSale = current + (applyLoyalty ? CalculateEarnedPoints() : 0);
 
-            // If a unique SystemId is used, the backend already filters rewards. 
-            // Only use prefix filtering if we're on the default/shared system.
-            var merchantRewards = !string.IsNullOrWhiteSpace(currentMerchantLoyaltySystemId)
-                ? ActiveRewards
-                : (string.IsNullOrEmpty(GetRewardPrefix(currentMerchantName)) 
-                    ? ActiveRewards 
-                    : ActiveRewards.Where(r => r.Name.StartsWith(GetRewardPrefix(currentMerchantName), StringComparison.OrdinalIgnoreCase)).ToList());
+            // Rewards are now server-scoped by customer/merchant, avoid client-side prefix security logic.
+            var merchantRewards = ActiveRewards;
 
             reachableNow       = merchantRewards.Where(r => r.IsActive && r.PointCost <= current).ToList();
             reachableAfterSale = merchantRewards.Where(r => r.IsActive && r.PointCost > current && r.PointCost <= afterSale).ToList();
@@ -574,23 +579,6 @@
             isError = true;
             StateHasChanged();
         }
-    }
-
-    // Returns "SHOPNAME: " prefix (same logic as Customers.razor)
-    // Returns "SHOPNAME: " prefix
-    // Returns "SHOPNAME: " prefix
-    private static string GetRewardPrefix(string merchantName, string? loyaltySystemId = null)
-    {
-        // If we have a unique system ID, we don't need name-based prefixes anymore
-        if (!string.IsNullOrWhiteSpace(loyaltySystemId))
-        {
-            return null;
-        }
-        
-        if (string.IsNullOrWhiteSpace(merchantName)) return null;
-        var safe = System.Text.RegularExpressions.Regex
-            .Replace(merchantName.ToUpperInvariant(), @"[^A-Z0-9]", "_");
-        return safe + ": ";
     }
 
     private async Task LoadCustomers()

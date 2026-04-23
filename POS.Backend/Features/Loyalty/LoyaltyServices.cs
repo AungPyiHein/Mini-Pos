@@ -12,9 +12,10 @@ namespace POS.Backend.Features.Loyalty
         Task<Result<bool>> ClaimRewardAsync(Guid customerId, Guid rewardId, string? notes = null, string? systemId = null, string? apiKey = null);
         Task<Result<List<LoyaltyRuleDto>>> GetActiveRulesAsync(string? systemId = null, string? apiKey = null);
         Task<Result<List<LoyaltyHistoryDto>>> GetCustomerHistoryAsync(Guid customerId, string? systemId = null, string? apiKey = null);
-        Task<Result<LoyaltyAdminStatsResponse>> GetAdminStatsAsync();
+        Task<Result<LoyaltyAdminStatsResponse>> GetAdminStatsAsync(string? systemId = null, string? apiKey = null);
         Task<Result<PagedRedemptionHistoryResponse>> GetRedemptionHistoryAsync(int page = 1, int pageSize = 10, string? status = null, string? searchTerm = null, string? systemId = null, string? apiKey = null);
         Task<Result<PagedLedgerHistoryResponse>> GetGlobalLedgerAsync(int page = 1, int pageSize = 10, string? searchTerm = null, string? systemId = null, string? apiKey = null);
+        Task<Result<bool>> FulfillRedemptionAsync(Guid redemptionId, string? systemId = null, string? apiKey = null);
     }
 
     public class LoyaltySettings
@@ -163,9 +164,7 @@ namespace POS.Backend.Features.Loyalty
                     return Result<bool>.Failure($"Loyalty claim error: {error}");
                 }
 
-                // Auto-fulfill: find the newly created pending redemption and mark it Fulfilled
-                await AutoFulfillRedemptionAsync(customerId, rewardId, systemId, apiKey);
-
+                // Manual workflow: keep redemption pending until merchant/admin fulfills it.
                 return Result<bool>.Success(true);
             }
             catch (Exception ex)
@@ -174,77 +173,229 @@ namespace POS.Backend.Features.Loyalty
             }
         }
 
+        public async Task<Result<bool>> FulfillRedemptionAsync(Guid redemptionId, string? systemId = null, string? apiKey = null)
+        {
+            try
+            {
+                var fulfilled = await TryFulfillRedemptionAsync(redemptionId, systemId, apiKey);
+                return fulfilled
+                    ? Result<bool>.Success(true)
+                    : Result<bool>.Failure("Failed to fulfill redemption.");
+            }
+            catch (Exception ex)
+            {
+                return Result<bool>.Failure($"Failed to connect to Loyalty API: {ex.Message}");
+            }
+        }
+
+        private static bool TryGetGuidFromProperty(System.Text.Json.JsonElement element, string propertyName, out Guid guid)
+        {
+            guid = Guid.Empty;
+            if (!element.TryGetProperty(propertyName, out var prop))
+            {
+                return false;
+            }
+
+            if (prop.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                return Guid.TryParse(prop.GetString(), out guid);
+            }
+
+            return prop.TryGetGuid(out guid);
+        }
+
+        private async Task<Guid?> TryReadRedemptionIdFromClaimAsync(HttpResponseMessage claimResponse)
+        {
+            try
+            {
+                var root = await claimResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+
+                if (TryGetGuidFromProperty(root, "id", out var rootId))
+                {
+                    return rootId;
+                }
+
+                if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    if (root.TryGetProperty("data", out var data))
+                    {
+                        if (TryGetGuidFromProperty(data, "id", out var dataId))
+                        {
+                            return dataId;
+                        }
+                    }
+
+                    if (root.TryGetProperty("redemptionId", out var redemptionIdProp))
+                    {
+                        if (redemptionIdProp.ValueKind == System.Text.Json.JsonValueKind.String && Guid.TryParse(redemptionIdProp.GetString(), out var redId))
+                        {
+                            return redId;
+                        }
+
+                        if (redemptionIdProp.TryGetGuid(out redId))
+                        {
+                            return redId;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Claim response parsed without redemption id");
+            }
+
+            return null;
+        }
+
+        private async Task<bool> TryFulfillRedemptionAsync(Guid redemptionId, string? systemId, string? apiKey)
+        {
+            var putPayload = new object[]
+            {
+                new { status = "Fulfilled" },
+                new { Status = "Fulfilled" }
+            };
+
+            foreach (var payload in putPayload)
+            {
+                var putResponse = await SendWithHeadersAsync(
+                    HttpMethod.Put,
+                    $"api/v1/admin/redemptions/{redemptionId}/status",
+                    payload,
+                    systemId,
+                    apiKey);
+
+                if (putResponse.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+            }
+
+            var patchPayload = new object[]
+            {
+                new { status = "Fulfilled" },
+                new { Status = "Fulfilled" }
+            };
+
+            foreach (var payload in patchPayload)
+            {
+                var patchResponse = await SendWithHeadersAsync(
+                    HttpMethod.Patch,
+                    $"api/v1/admin/redemptions/{redemptionId}/status",
+                    payload,
+                    systemId,
+                    apiKey);
+
+                if (patchResponse.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private async Task MarkRedemptionFulfilledAsync(Guid redemptionId, string? systemId, string? apiKey)
+        {
+            var isFulfilled = await TryFulfillRedemptionAsync(redemptionId, systemId, apiKey);
+            if (isFulfilled)
+            {
+                return;
+            }
+
+            var fulfillResponse = await SendWithHeadersAsync(
+                HttpMethod.Put,
+                $"api/v1/admin/redemptions/{redemptionId}/status",
+                new { status = "Fulfilled" },
+                systemId,
+                apiKey);
+
+            if (!fulfillResponse.IsSuccessStatusCode)
+            {
+                var detail = await fulfillResponse.Content.ReadAsStringAsync();
+                _logger.LogWarning("Auto-fulfill failed for redemption {RedemptionId}. HTTP {Status}. Body: {Body}", redemptionId, fulfillResponse.StatusCode, detail);
+            }
+        }
+
         private async Task AutoFulfillRedemptionAsync(Guid customerId, Guid rewardId, string? systemId, string? apiKey)
         {
             try
             {
-                var pendingResponse = await SendWithHeadersAsync(HttpMethod.Get, "api/v1/admin/redemptions/pending", null, systemId, apiKey);
-                if (!pendingResponse.IsSuccessStatusCode)
+                for (var attempt = 1; attempt <= 5; attempt++)
                 {
-                    _logger.LogWarning("Auto-fulfill: could not fetch pending redemptions (HTTP {Status})", pendingResponse.StatusCode);
-                    return;
-                }
-
-                var root = await pendingResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-
-                // Support both a raw array [ {...} ] and a wrapped object { items: [...] }
-                System.Text.Json.JsonElement pendingArray = default;
-                if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
-                {
-                    pendingArray = root;
-                }
-                else if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
-                {
-                    if (root.TryGetProperty("items", out var items) && items.ValueKind == System.Text.Json.JsonValueKind.Array)
-                        pendingArray = items;
-                    else if (root.TryGetProperty("data", out var data) && data.ValueKind == System.Text.Json.JsonValueKind.Array)
-                        pendingArray = data;
-                }
-
-                if (pendingArray.ValueKind != System.Text.Json.JsonValueKind.Array)
-                {
-                    _logger.LogWarning("Auto-fulfill: unexpected pending redemptions response shape");
-                    return;
-                }
-
-                foreach (var pending in pendingArray.EnumerateArray())
-                {
-                    // Safely read externalUserId
-                    if (!pending.TryGetProperty("externalUserId", out var userIdProp) ||
-                        userIdProp.GetString() != customerId.ToString())
-                        continue;
-
-                    // Safely read rewardId (may be Guid or string)
-                    Guid pendingRewardId = Guid.Empty;
-                    if (pending.TryGetProperty("rewardId", out var rewardIdProp))
+                    var pendingResponse = await SendWithHeadersAsync(HttpMethod.Get, "api/v1/admin/redemptions/pending", null, systemId, apiKey);
+                    if (!pendingResponse.IsSuccessStatusCode)
                     {
-                        if (rewardIdProp.ValueKind == System.Text.Json.JsonValueKind.String)
-                            Guid.TryParse(rewardIdProp.GetString(), out pendingRewardId);
-                        else
-                            rewardIdProp.TryGetGuid(out pendingRewardId);
-                    }
-
-                    if (pendingRewardId != rewardId) continue;
-
-                    // Safely read redemption id
-                    if (!pending.TryGetProperty("id", out var idProp) || !idProp.TryGetGuid(out var redemptionId))
-                    {
-                        _logger.LogWarning("Auto-fulfill: matched pending redemption has no valid 'id'");
+                        _logger.LogWarning("Auto-fulfill attempt {Attempt}: could not fetch pending redemptions (HTTP {Status})", attempt, pendingResponse.StatusCode);
+                        await Task.Delay(attempt * 250);
                         continue;
                     }
 
-                    var fulfillResponse = await SendWithHeadersAsync(
-                        HttpMethod.Put,
-                        $"api/v1/admin/redemptions/{redemptionId}/status",
-                        new { status = "Fulfilled" },
-                        systemId, apiKey);
+                    var root = await pendingResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
 
-                    if (fulfillResponse.IsSuccessStatusCode)
+                    // Support both a raw array [ {...} ] and wrapped objects
+                    System.Text.Json.JsonElement pendingArray = default;
+                    if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        pendingArray = root;
+                    }
+                    else if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    {
+                        if (root.TryGetProperty("items", out var items) && items.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            pendingArray = items;
+                        else if (root.TryGetProperty("data", out var data))
+                        {
+                            if (data.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                pendingArray = data;
+                            else if (data.ValueKind == System.Text.Json.JsonValueKind.Object
+                                     && data.TryGetProperty("items", out var nestedItems)
+                                     && nestedItems.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                pendingArray = nestedItems;
+                        }
+                    }
+
+                    if (pendingArray.ValueKind != System.Text.Json.JsonValueKind.Array)
+                    {
+                        _logger.LogWarning("Auto-fulfill attempt {Attempt}: unexpected pending redemptions response shape", attempt);
+                        await Task.Delay(attempt * 250);
+                        continue;
+                    }
+
+                    var candidates = pendingArray.EnumerateArray().Where(pending =>
+                    {
+                        if (!pending.TryGetProperty("externalUserId", out var userIdProp) ||
+                            userIdProp.GetString() != customerId.ToString())
+                            return false;
+
+                        Guid pendingRewardId = Guid.Empty;
+                        if (pending.TryGetProperty("rewardId", out var rewardIdProp))
+                        {
+                            if (rewardIdProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                                Guid.TryParse(rewardIdProp.GetString(), out pendingRewardId);
+                            else
+                                rewardIdProp.TryGetGuid(out pendingRewardId);
+                        }
+
+                        return pendingRewardId == rewardId;
+                    }).ToList();
+
+                    if (candidates.Count == 0)
+                    {
+                        await Task.Delay(attempt * 250);
+                        continue;
+                    }
+
+                    foreach (var pending in candidates)
+                    {
+                        if (!pending.TryGetProperty("id", out var idProp) || !idProp.TryGetGuid(out var redemptionId))
+                        {
+                            _logger.LogWarning("Auto-fulfill: matched pending redemption has no valid 'id'");
+                            continue;
+                        }
+
+                        await MarkRedemptionFulfilledAsync(redemptionId, systemId, apiKey);
                         _logger.LogInformation("Auto-fulfill: redemption {RedemptionId} fulfilled for customer {CustomerId}", redemptionId, customerId);
-                    else
-                        _logger.LogWarning("Auto-fulfill: failed to fulfill redemption {RedemptionId} (HTTP {Status})", redemptionId, fulfillResponse.StatusCode);
-
-                    break; // only fulfill the first match
+                        return;
+                    }
                 }
             }
             catch (Exception ex)
@@ -295,11 +446,17 @@ namespace POS.Backend.Features.Loyalty
             }
         }
 
-        public async Task<Result<LoyaltyAdminStatsResponse>> GetAdminStatsAsync()
+        public async Task<Result<LoyaltyAdminStatsResponse>> GetAdminStatsAsync(string? systemId = null, string? apiKey = null)
         {
             try
             {
-                var response = await SendWithHeadersAsync(HttpMethod.Get, "api/v1/admin/stats");
+                var targetSystemId = !string.IsNullOrWhiteSpace(systemId) ? systemId : _settings.SystemId;
+                if (string.IsNullOrWhiteSpace(targetSystemId))
+                {
+                    return Result<LoyaltyAdminStatsResponse>.Failure("Loyalty system context is required.");
+                }
+
+                var response = await SendWithHeadersAsync(HttpMethod.Get, $"api/v1/admin/stats?SystemId={targetSystemId}", null, systemId, apiKey);
                 if (response.IsSuccessStatusCode)
                 {
                     var stats = await response.Content.ReadFromJsonAsync<LoyaltyAdminStatsResponse>();

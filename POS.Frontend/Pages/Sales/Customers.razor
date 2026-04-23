@@ -5,9 +5,11 @@
 @using POS.Shared.Models
 @using POS.Frontend.Services.Merchants
 @using POS.Frontend.Models.Merchants
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,MerchantAdmin,Staff")]
 @inject ICustomerService CustomerService
 @inject IMerchantService MerchantService
 @inject ISaleService SaleService
+@inject NavigationManager NavManager
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 
 <div class="space-y-5">
@@ -163,9 +165,9 @@
                                 <td class="text-muted text-xs truncate max-w-[150px]" title="@recentlyBought">@recentlyBought</td>
                                 <td>
                                     <div class="flex gap-1 flex-wrap">
-                                        <button class="btn-ghost py-1 px-2 text-xs text-blue-500" @onclick="() => ShowCustomerDetails(c)">View</button>
+                                        <button class="btn-ghost py-1 px-2 text-xs text-blue-500" @onclick='() => NavManager.NavigateTo($"/customers/{c.Id}")'>View</button>
                                         <button class="inline-flex items-center gap-1 py-1 px-2 text-xs font-semibold rounded-lg bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 text-violet-700 dark:text-violet-400 transition-colors border border-violet-200/60 dark:border-violet-700/30"
-                                                @onclick="() => ShowCustomerDetails(c)">
+                                                @onclick='() => NavManager.NavigateTo($"/customers/{c.Id}")'>
                                             🎁 Rewards
                                         </button>
                                         <button class="btn-ghost py-1 px-2 text-xs" @onclick="() => ShowEditModal(c)">Edit</button>
@@ -226,7 +228,7 @@
                         </div>
                         <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
                             <button class="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-sm shadow-purple-200 dark:shadow-purple-900/30 transition-all active:scale-95"
-                                    @onclick="() => ShowCustomerDetails(c)">
+                                    @onclick='() => NavManager.NavigateTo($"/customers/{c.Id}")'>
                                 🎁 View & Redeem Rewards
                             </button>
                             <div class="flex gap-2">
@@ -390,21 +392,7 @@
 
                 @if (ActiveRewards.Any())
                 {
-                    var isSystemAdmin = UserRole == "Admin";
-                    var merchantName = SelectedCustomerDetails?.MerchantName ?? "";
-                    var merchantSystemId = SelectedCustomerDetails?.MerchantLoyaltySystemId;
-                    
-                    // Filter rewards: Only Admin sees everything. 
-                    // If a unique system ID is used, the backend already scoped the rewards.
-                    // Otherwise, we filter by name prefix for the shared system.
-                    var visibleRewards = isSystemAdmin 
-                        ? ActiveRewards 
-                        : (!string.IsNullOrWhiteSpace(merchantSystemId)
-                            ? ActiveRewards
-                            : ActiveRewards.Where(r => 
-                                r.Name.StartsWith(merchantName + ":", StringComparison.OrdinalIgnoreCase) || 
-                                r.Name.StartsWith(GetRewardPrefix(merchantName), StringComparison.OrdinalIgnoreCase)
-                            ).ToList());
+                    var visibleRewards = ActiveRewards;
 
                     @if (visibleRewards.Any())
                     {
@@ -621,20 +609,6 @@
     private RewardClaimState GetRewardClaimState(Guid rewardId) =>
         RewardClaimStates.TryGetValue(rewardId, out var s) ? s : RewardClaimState.Idle;
 
-    // Returns "SHOPNAME: " prefix from a merchant name (e.g. "My Café" → "MY_CAF_: ")
-    private static string GetRewardPrefix(string merchantName, string? loyaltySystemId = null)
-    {
-        // If we have a unique system ID, we don't need name-based prefixes anymore
-        if (!string.IsNullOrWhiteSpace(loyaltySystemId))
-        {
-            return null;
-        }
-
-        if (string.IsNullOrWhiteSpace(merchantName)) return null;
-        var safe = System.Text.RegularExpressions.Regex
-            .Replace(merchantName.ToUpperInvariant(), @"[^A-Z0-9]", "_");
-        return safe + ": ";
-    }
     private CancellationTokenSource? _searchCts;
     private int TotalRecords = 0;
     private Dictionary<Guid, decimal?> CustomerPoints = new();
@@ -846,7 +820,7 @@
         CustomerLoyaltyHistory = new();
         
         var loyaltyTask = CustomerService.GetCustomerLoyaltyAsync(customer.Id);
-        var rewardsTask = CustomerService.GetActiveRewardsAsync();
+        var rewardsTask = CustomerService.GetActiveRewardsAsync(customerId: customer.Id);
         var historyTask = CustomerService.GetCustomerHistoryAsync(customer.Id);
         await Task.WhenAll(loyaltyTask, rewardsTask, historyTask);
 
