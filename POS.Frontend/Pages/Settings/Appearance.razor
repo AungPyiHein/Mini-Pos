@@ -1,0 +1,276 @@
+@page "/settings/appearance"
+@using POS.Frontend.Services
+@inject ThemeService ThemeService
+@inject NavigationManager Nav
+
+<div class="page-enter">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Appearance</h1>
+            <p class="page-subtitle">Customize the look and feel of your MiniPOS</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Presets -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="text-lg font-semibold text-text-main">Theme Presets</h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-sm text-muted mb-6">Choose from our curated themes to instantly change the vibe.</p>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        @foreach (var preset in _presets)
+                        {
+                            <div class="relative group cursor-pointer" @onclick="() => ApplyPreset(preset)">
+                                <div class="aspect-[16/10] rounded-xl overflow-hidden border-2 transition-all @(IsActive(preset) ? "border-accent shadow-neon" : "border-border/40 hover:border-accent/40")">
+                                    <div class="flex h-full">
+                                        <div class="w-1/4 h-full border-r border-border/10" style="background-color: @preset.Sidebar"></div>
+                                        <div class="flex-1 h-full p-2" style="background-color: @preset.Content">
+                                            <div class="w-full h-2 rounded-sm mb-1" style="background-color: @preset.Accent"></div>
+                                            <div class="w-1/2 h-1 bg-border/20 rounded-sm mb-1"></div>
+                                            <div class="w-3/4 h-1 bg-border/20 rounded-sm"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="mt-2 text-xs font-medium text-center text-text-main group-hover:text-accent transition-colors">@preset.Name</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manual Customization -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="text-lg font-semibold text-text-main">Manual Customization</h2>
+                </div>
+                <div class="card-body space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Accent Color -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-text-main">Accent Color</label>
+                            <div class="flex items-center gap-3">
+                                <input type="color" class="w-10 h-10 rounded-lg border-none p-0 cursor-pointer" 
+                                       value="@_accentColor" @onchange="OnAccentChange" />
+                                <input type="text" class="form-input font-mono uppercase" 
+                                       value="@_accentColor" @onchange="OnAccentChange" />
+                            </div>
+                            <p class="text-[10px] text-muted">Primary color for buttons, icons, and highlights.</p>
+                        </div>
+
+                        <!-- Sidebar Color -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-text-main">Sidebar Color</label>
+                            <div class="flex items-center gap-3">
+                                <input type="color" class="w-10 h-10 rounded-lg border-none p-0 cursor-pointer" 
+                                       value="@_sidebarColor" @onchange="OnSidebarChange" />
+                                <input type="text" class="form-input font-mono uppercase" 
+                                       value="@_sidebarColor" @onchange="OnSidebarChange" />
+                            </div>
+                            <p class="text-[10px] text-muted">Background color for the main navigation sidebar.</p>
+                        </div>
+
+                        <!-- Content Color -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-text-main">Background Color</label>
+                            <div class="flex items-center gap-3">
+                                <input type="color" class="w-10 h-10 rounded-lg border-none p-0 cursor-pointer" 
+                                       value="@_contentColor" @onchange="OnContentChange" />
+                                <input type="text" class="form-input font-mono uppercase" 
+                                       value="@_contentColor" @onchange="OnContentChange" />
+                            </div>
+                            <p class="text-[10px] text-muted">Main background color for the content area.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="space-y-6">
+            <div class="card sticky top-6">
+                <div class="card-header">
+                    <h2 class="text-lg font-semibold text-text-main">Live Preview</h2>
+                </div>
+                <div class="card-body">
+                    <div class="rounded-xl border border-border/60 overflow-hidden shadow-lg">
+                        <!-- Preview Header -->
+                        <div class="h-8 border-b border-border/40 flex items-center px-3 gap-1 bg-surface">
+                            <div class="w-2 h-2 rounded-full bg-red-400"></div>
+                            <div class="w-2 h-2 rounded-full bg-amber-400"></div>
+                            <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                        </div>
+                        <!-- Preview Content -->
+                        <div class="flex h-48">
+                            <div class="w-16 h-full p-2 flex flex-col gap-2 border-r border-border/10" style="background-color: @_sidebarColor">
+                                <div class="w-full h-3 rounded-sm opacity-50" style="background-color: @_accentColor"></div>
+                                <div class="w-full h-2 rounded-sm bg-white/10"></div>
+                                <div class="w-3/4 h-2 rounded-sm bg-white/10"></div>
+                                <div class="w-full h-2 rounded-sm bg-white/10"></div>
+                                <div class="mt-auto w-full h-2 rounded-sm bg-white/10"></div>
+                            </div>
+                            <div class="flex-1 h-full p-4 flex flex-col gap-3" style="background-color: @_contentColor">
+                                <div class="flex justify-between items-center">
+                                    <div class="w-1/3 h-3 bg-text-main/10 rounded-sm"></div>
+                                    <div class="w-8 h-4 rounded-md shadow-[0_0_10px_rgb(var(--color-accent)/0.3)]" style="background-color: @_accentColor"></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="h-12 bg-card/80 backdrop-blur-sm rounded-lg border border-border/40 shadow-sm p-2 flex flex-col gap-1">
+                                        <div class="w-1/2 h-1 bg-text-main/10 rounded-sm"></div>
+                                        <div class="w-3/4 h-2 bg-text-main/20 rounded-sm"></div>
+                                    </div>
+                                    <div class="h-12 bg-card/80 backdrop-blur-sm rounded-lg border border-border/40 shadow-sm p-2 flex flex-col gap-1">
+                                        <div class="w-1/2 h-1 bg-text-main/10 rounded-sm"></div>
+                                        <div class="w-3/4 h-2 bg-text-main/20 rounded-sm"></div>
+                                    </div>
+                                </div>
+                                <div class="flex-1 bg-card/80 backdrop-blur-sm rounded-lg border border-border/40 shadow-sm p-2">
+                                    <div class="w-full h-full bg-text-main/5 rounded-md"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex flex-col gap-3">
+                        <button class="btn btn-primary w-full justify-center" @onclick="ResetToDefault">Reset to Defaults</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _accentColor = "#6366f1";
+    private string _sidebarColor = "#0f1117";
+    private string _contentColor = "#f3f4f6";
+
+    private class ThemePreset
+    {
+        public string Name { get; set; }
+        public string Accent { get; set; }
+        public string SidebarLight { get; set; }
+        public string ContentLight { get; set; }
+        public string SidebarDark { get; set; }
+        public string ContentDark { get; set; }
+        public bool DefaultIsDark { get; set; }
+
+        // Helper for the UI preview
+        public string Sidebar => DefaultIsDark ? SidebarDark : SidebarLight;
+        public string Content => DefaultIsDark ? ContentDark : ContentLight;
+    }
+
+    private readonly List<ThemePreset> _presets = new()
+    {
+        new ThemePreset { 
+            Name = "Default Indigo", Accent = "#6366f1", 
+            SidebarLight = "#f8fafc", ContentLight = "#f3f4f6",
+            SidebarDark = "#0f1117", ContentDark = "#020617",
+            DefaultIsDark = false 
+        },
+        new ThemePreset { 
+            Name = "Midnight Blue", Accent = "#3b82f6", 
+            SidebarLight = "#f1f5f9", ContentLight = "#f8fafc",
+            SidebarDark = "#020617", ContentDark = "#0f172a",
+            DefaultIsDark = true 
+        },
+        new ThemePreset { 
+            Name = "Forest Emerald", Accent = "#10b981", 
+            SidebarLight = "#ecfdf5", ContentLight = "#f0fdf4",
+            SidebarDark = "#064e3b", ContentDark = "#022c22",
+            DefaultIsDark = false 
+        },
+        new ThemePreset { 
+            Name = "Glass Aurora", Accent = "#8b5cf6", 
+            SidebarLight = "#f5f3ff", ContentLight = "#eef2ff",
+            SidebarDark = "#1e1b4b", ContentDark = "#0c0a09",
+            DefaultIsDark = false 
+        },
+        new ThemePreset { 
+            Name = "Sunset Orange", Accent = "#f97316", 
+            SidebarLight = "#fff7ed", ContentLight = "#fffaf5",
+            SidebarDark = "#431407", ContentDark = "#1c0a00",
+            DefaultIsDark = false 
+        },
+        new ThemePreset { 
+            Name = "Royal Purple", Accent = "#a855f7", 
+            SidebarLight = "#faf5ff", ContentLight = "#f5f3ff",
+            SidebarDark = "#2e1065", ContentDark = "#0f0720",
+            DefaultIsDark = false 
+        },
+        new ThemePreset { 
+            Name = "Cyberpunk", Accent = "#ec4899", 
+            SidebarLight = "#1e1b4b", ContentLight = "#fdf2f8",
+            SidebarDark = "#000000", ContentDark = "#020617",
+            DefaultIsDark = true 
+        },
+        new ThemePreset { 
+            Name = "Coffee", Accent = "#92400e", 
+            SidebarLight = "#fafaf9", ContentLight = "#ffffff",
+            SidebarDark = "#1c1917", ContentDark = "#0c0a09",
+            DefaultIsDark = false 
+        },
+        new ThemePreset { 
+            Name = "Minimalist", Accent = "#18181b", 
+            SidebarLight = "#ffffff", ContentLight = "#f4f4f5",
+            SidebarDark = "#000000", ContentDark = "#18181b",
+            DefaultIsDark = false 
+        }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _accentColor = await ThemeService.GetAccentColorAsync();
+        _sidebarColor = await ThemeService.GetSidebarColorAsync();
+        _contentColor = await ThemeService.GetContentColorAsync();
+    }
+
+    private async Task OnAccentChange(ChangeEventArgs e)
+    {
+        _accentColor = e.Value?.ToString() ?? "#6366f1";
+        await ThemeService.SetAccentColorAsync(_accentColor);
+    }
+
+    private async Task OnSidebarChange(ChangeEventArgs e)
+    {
+        _sidebarColor = e.Value?.ToString() ?? "#0f1117";
+        await ThemeService.SetSidebarColorAsync(_sidebarColor);
+    }
+
+    private async Task OnContentChange(ChangeEventArgs e)
+    {
+        _contentColor = e.Value?.ToString() ?? "#f1f5f9";
+        await ThemeService.SetContentColorAsync(_contentColor);
+    }
+
+    private async Task ApplyPreset(ThemePreset preset)
+    {
+        _accentColor = preset.Accent;
+        _sidebarColor = preset.Sidebar;
+        _contentColor = preset.Content;
+
+        await ThemeService.SetAccentColorAsync(_accentColor);
+        await ThemeService.SetThemeModesAsync(preset.SidebarLight, preset.ContentLight, preset.SidebarDark, preset.ContentDark);
+        
+        // Apply the default mode for the preset
+        await ThemeService.SetSidebarColorAsync(_sidebarColor);
+        await ThemeService.SetContentColorAsync(_contentColor);
+    }
+
+    private async Task ResetToDefault()
+    {
+        var defaultPreset = _presets[0];
+        await ApplyPreset(defaultPreset);
+    }
+
+    private bool IsActive(ThemePreset preset)
+    {
+        return _accentColor.Equals(preset.Accent, StringComparison.OrdinalIgnoreCase) &&
+               (_sidebarColor.Equals(preset.SidebarLight, StringComparison.OrdinalIgnoreCase) || 
+                _sidebarColor.Equals(preset.SidebarDark, StringComparison.OrdinalIgnoreCase)) &&
+               (_contentColor.Equals(preset.ContentLight, StringComparison.OrdinalIgnoreCase) || 
+                _contentColor.Equals(preset.ContentDark, StringComparison.OrdinalIgnoreCase));
+    }
+}

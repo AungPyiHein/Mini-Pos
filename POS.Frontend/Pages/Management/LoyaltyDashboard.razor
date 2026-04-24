@@ -25,7 +25,7 @@
         <div class="card-header flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
             <div>
                 <div class="text-xs font-semibold text-muted uppercase tracking-wider">Merchant Scope</div>
-                <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div class="text-sm font-medium text-text-main">
                     @if (_selectedMerchant != null)
                     {
                         @_selectedMerchant.Name
@@ -64,7 +64,7 @@
             <div class="kpi-card">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs font-semibold text-muted uppercase tracking-wider">Active Rules</span>
-                    <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+                    <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                     </div>
                 </div>
@@ -75,18 +75,18 @@
             <div class="kpi-card">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs font-semibold text-muted uppercase tracking-wider">Pending Claims</span>
-                    <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-600">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
                 </div>
-                <div class="text-2xl font-bold text-amber-600">@(_stats?.PendingRedemptions ?? 0)</div>
+                <div class="text-2xl font-bold text-amber-500">@(_stats?.PendingRedemptions ?? 0)</div>
                 <p class="text-[10px] text-muted font-medium mt-1">Rewards awaiting fulfillment</p>
             </div>
 
             <div class="kpi-card">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs font-semibold text-muted uppercase tracking-wider">Selected Merchant</span>
-                    <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600">
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                     </div>
                 </div>
@@ -105,13 +105,13 @@
         }
 
         <div class="card">
-            <div class="card-header border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+            <div class="card-header border-b border-border flex justify-between items-center">
                 <div class="flex gap-4">
-                    <button class="text-xs font-bold uppercase tracking-widest @(_selectedTab == "redemptions" ? "text-accent border-b-2 border-accent pb-1" : "text-muted hover:text-gray-700")"
+                    <button class="text-xs font-bold uppercase tracking-widest @(_selectedTab == "redemptions" ? "text-accent border-b-2 border-accent pb-1" : "text-muted hover:text-text-main")"
                             @onclick='() => SwitchTab("redemptions")'>
                         Redemptions
                     </button>
-                    <button class="text-xs font-bold uppercase tracking-widest @(_selectedTab == "ledger" ? "text-accent border-b-2 border-accent pb-1" : "text-muted hover:text-gray-700")"
+                    <button class="text-xs font-bold uppercase tracking-widest @(_selectedTab == "ledger" ? "text-accent border-b-2 border-accent pb-1" : "text-muted hover:text-text-main")"
                             @onclick='() => SwitchTab("ledger")'>
                         Merchant Ledger
                     </button>
@@ -129,7 +129,7 @@
                                 <th>Customer</th>
                                 <th class="text-right">Cost</th>
                                 <th class="text-center">Status</th>
-                                <th class="text-right">Action</th>
+                                <th class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -140,11 +140,11 @@
                                     <tr>
                                         <td class="text-xs text-muted whitespace-nowrap">@(item.RedeemedAt?.ToString("MMM dd, HH:mm") ?? "-")</td>
                                         <td>
-                                            <div class="font-bold text-gray-900 dark:text-white">@item.RewardName</div>
+                                            <div class="font-bold text-text-main">@item.RewardName</div>
                                             <div class="text-[10px] text-muted">ID: @item.Id.ToString().Substring(0,8)</div>
                                         </td>
                                         <td>
-                                            <div class="font-semibold text-gray-900 dark:text-white">@(string.IsNullOrWhiteSpace(item.CustomerName) ? "Unknown Customer" : item.CustomerName)</div>
+                                            <div class="font-semibold text-text-main">@(string.IsNullOrWhiteSpace(item.CustomerName) ? "Unknown Customer" : item.CustomerName)</div>
                                             <div class="font-mono text-[10px] text-muted">@item.ExternalUserId</div>
                                         </td>
                                         <td class="text-right font-bold text-red-500">
@@ -155,12 +155,12 @@
                                                 @item.Status
                                             </span>
                                         </td>
-                                        <td class="text-right">
-                                            <div class="flex justify-end">
+                                        <td class="align-middle">
+                                            <div class="flex items-center justify-center w-full h-full">
                                                 @if (string.Equals(item.Status, "Pending", StringComparison.OrdinalIgnoreCase))
                                                 {
                                                     var isBusy = _fulfillingRedemptionIds.Contains(item.Id);
-                                                    <button class="btn-secondary py-1 px-2 text-xs"
+                                                    <button class="btn-secondary py-1 px-3 text-xs whitespace-nowrap mx-auto"
                                                             disabled="@isBusy"
                                                             @onclick="() => FulfillRedemption(item.Id)">
                                                         @(isBusy ? "Fulfilling..." : "Mark Fulfill")
@@ -186,7 +186,7 @@
                 </div>
                 @if (_history != null && _history.TotalCount > _history.PageSize)
                 {
-                    <div class="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center text-xs text-muted">
+                    <div class="p-4 border-t border-border flex justify-between items-center text-xs text-muted">
                         <span>Showing @(_history.Items.Count) of @(_history.TotalCount) records</span>
                         <div class="flex gap-2">
                             <button class="btn-ghost py-1" disabled="@(_history.Page <= 1)" @onclick="() => ChangePage(_history.Page - 1)">Previous</button>
@@ -215,7 +215,7 @@
                                     <tr>
                                         <td class="text-xs text-muted whitespace-nowrap">@item.CreatedAt.ToString("MMM dd, HH:mm")</td>
                                         <td>
-                                            <div class="font-bold text-gray-900 dark:text-white">@item.Description</div>
+                                            <div class="font-bold text-text-main">@item.Description</div>
                                             <div class="text-[10px] text-muted">Key: @item.EventKey</div>
                                         </td>
                                         <td>
@@ -238,7 +238,7 @@
                 </div>
                 @if (_ledger != null && _ledger.TotalCount > _ledger.PageSize)
                 {
-                    <div class="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center text-xs text-muted">
+                    <div class="p-4 border-t border-border flex justify-between items-center text-xs text-muted">
                         <span>Showing @(_ledger.Items.Count) of @(_ledger.TotalCount) records</span>
                         <div class="flex gap-2">
                             <button class="btn-ghost py-1" disabled="@(_ledger.Page <= 1)" @onclick="() => ChangePage(_ledger.Page - 1)">Previous</button>

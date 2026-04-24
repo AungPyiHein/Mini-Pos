@@ -13,11 +13,182 @@
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="POS.Frontend.styles.css" rel="stylesheet" />
     <script>
+        // Dark mode logic
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
         }
+
+        // Accent color logic
+        // Accent color logic
+        function hexToRgb(hex) {
+            if (!hex) return { r: 0, g: 0, b: 0 };
+            const cleanHex = hex.startsWith('#') ? hex.slice(1) : hex;
+            if (cleanHex.length === 3) {
+                const r = parseInt(cleanHex[0] + cleanHex[0], 16);
+                const g = parseInt(cleanHex[1] + cleanHex[1], 16);
+                const b = parseInt(cleanHex[2] + cleanHex[2], 16);
+                return { r, g, b };
+            }
+            const r = parseInt(cleanHex.slice(0, 2), 16) || 0;
+            const g = parseInt(cleanHex.slice(2, 4), 16) || 0;
+            const b = parseInt(cleanHex.slice(4, 6), 16) || 0;
+            return { r, g, b };
+        }
+
+        function getBrightness(hex) {
+            const { r, g, b } = hexToRgb(hex);
+            // Relative luminance formula
+            return (0.299 * r + 0.587 * g + 0.114 * b);
+        }
+
+        function applyAccentColor(hex) {
+            if (!hex) return;
+            const { r, g, b } = hexToRgb(hex);
+            document.documentElement.style.setProperty('--color-accent', `${r} ${g} ${b}`);
+            
+            // Hover: slightly darker
+            document.documentElement.style.setProperty('--color-accent-hover', `${Math.max(0, r - 20)} ${Math.max(0, g - 20)} ${Math.max(0, b - 20)}`);
+            // Light: significantly lighter
+            document.documentElement.style.setProperty('--color-accent-light', `${Math.min(255, r + 50)} ${Math.min(255, g + 50)} ${Math.min(255, b + 50)}`);
+            
+            // Glow: slightly different from accent for a better "backlight" effect
+            // We shift the hue slightly by adjusting channels differently
+            const gr = Math.min(255, Math.max(0, r > 128 ? r - 15 : r + 15));
+            const gg = Math.min(255, Math.max(0, g > 128 ? g - 10 : g + 20));
+            const gb = Math.min(255, Math.max(0, b > 128 ? b + 20 : b - 10));
+            document.documentElement.style.setProperty('--color-accent-glow', `${gr} ${gg} ${gb}`);
+        }
+
+        function applySidebarColor(hex) {
+            if (!hex) return;
+            const { r, g, b } = hexToRgb(hex);
+            document.documentElement.style.setProperty('--color-sidebar', `${r} ${g} ${b}`);
+            
+            const brightness = getBrightness(hex);
+            const isDark = brightness < 140; // Slightly higher threshold for sidebar
+            
+            if (isDark) {
+                document.documentElement.style.setProperty('--color-sidebar-hover', `${Math.min(255, r + 20)} ${Math.min(255, g + 20)} ${Math.min(255, b + 25)}`);
+                document.documentElement.style.setProperty('--color-sidebar-border', `${Math.min(255, r + 35)} ${Math.min(255, g + 35)} ${Math.min(255, b + 40)}`);
+                document.documentElement.style.setProperty('--color-sidebar-text', '255 255 255');
+                document.documentElement.style.setProperty('--color-sidebar-text-muted', '148 163 184');
+            } else {
+                document.documentElement.style.setProperty('--color-sidebar-hover', `${Math.max(0, r - 15)} ${Math.max(0, g - 15)} ${Math.max(0, b - 15)}`);
+                document.documentElement.style.setProperty('--color-sidebar-border', `${Math.max(0, r - 30)} ${Math.max(0, g - 30)} ${Math.max(0, b - 30)}`);
+                document.documentElement.style.setProperty('--color-sidebar-text', '15 23 42');
+                document.documentElement.style.setProperty('--color-sidebar-text-muted', '71 85 105');
+            }
+        }
+
+        function applyContentColor(hex) {
+            if (!hex) return;
+            const { r, g, b } = hexToRgb(hex);
+            document.documentElement.style.setProperty('--color-content', `${r} ${g} ${b}`);
+            
+            const brightness = getBrightness(hex);
+            const isDark = brightness < 140;
+
+            // Sync 'dark' class with background brightness to keep Tailwind in sync
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            }
+
+            if (!isDark) {
+                // Light mode logic
+                document.documentElement.style.setProperty('--color-text-main', '15 23 42');
+                document.documentElement.style.setProperty('--color-text-muted', '71 85 105');
+                document.documentElement.style.setProperty('--color-muted', '100 116 139');
+                document.documentElement.style.setProperty('--color-border', '226 232 240');
+                
+                if (brightness > 245) {
+                    document.documentElement.style.setProperty('--color-card', '255 255 255');
+                    document.documentElement.style.setProperty('--color-surface', '255 255 255');
+                } else {
+                    document.documentElement.style.setProperty('--color-card', `${Math.min(255, r + 10)} ${Math.min(255, g + 10)} ${Math.min(255, b + 10)}`);
+                    document.documentElement.style.setProperty('--color-surface', `${Math.min(255, r + 5)} ${Math.min(255, g + 5)} ${Math.min(255, b + 5)}`);
+                }
+            } else {
+                // Dark mode logic
+                document.documentElement.style.setProperty('--color-text-main', '248 250 252');
+                document.documentElement.style.setProperty('--color-text-muted', '148 163 184');
+                document.documentElement.style.setProperty('--color-muted', '148 163 184');
+                document.documentElement.style.setProperty('--color-border', '51 65 85');
+
+                // Cards should be noticeably lighter but not too bright
+                document.documentElement.style.setProperty('--color-card', `${Math.min(255, r + 15)} ${Math.min(255, g + 20)} ${Math.min(255, b + 30)}`);
+                document.documentElement.style.setProperty('--color-surface', `${Math.min(255, r + 10)} ${Math.min(255, g + 12)} ${Math.min(255, b + 18)}`);
+            }
+        }
+
+        // Load saved colors
+        const savedAccent = localStorage.getItem('accentColor');
+        if (savedAccent) applyAccentColor(savedAccent);
+        
+        const savedSidebar = localStorage.getItem('sidebarColor');
+        if (savedSidebar) applySidebarColor(savedSidebar);
+        
+        const savedContent = localStorage.getItem('contentColor');
+        if (savedContent) applyContentColor(savedContent);
+
+        window.themeManager = {
+            setAccentColor: (hex) => {
+                applyAccentColor(hex);
+                localStorage.setItem('accentColor', hex);
+            },
+            getAccentColor: () => localStorage.getItem('accentColor') || '#6366f1',
+            
+            setSidebarColor: (hex) => {
+                applySidebarColor(hex);
+                localStorage.setItem('sidebarColor', hex);
+                
+                // Update light/dark storage based on current brightness
+                const brightness = getBrightness(hex);
+                if (brightness < 140) localStorage.setItem('darkSidebar', hex);
+                else localStorage.setItem('lightSidebar', hex);
+            },
+            getSidebarColor: () => localStorage.getItem('sidebarColor') || '#0f1117',
+            
+            setContentColor: (hex) => {
+                applyContentColor(hex);
+                localStorage.setItem('contentColor', hex);
+
+                // Update light/dark storage based on current brightness
+                const brightness = getBrightness(hex);
+                if (brightness < 140) localStorage.setItem('darkContent', hex);
+                else localStorage.setItem('lightContent', hex);
+            },
+            getContentColor: () => localStorage.getItem('contentColor') || '#f1f5f9',
+
+            setThemeModes: (lightSidebar, lightContent, darkSidebar, darkContent) => {
+                localStorage.setItem('lightSidebar', lightSidebar);
+                localStorage.setItem('lightContent', lightContent);
+                localStorage.setItem('darkSidebar', darkSidebar);
+                localStorage.setItem('darkContent', darkContent);
+            },
+
+            toggleTheme: () => {
+                const isDark = document.documentElement.classList.contains('dark');
+                if (isDark) {
+                    // Currently Dark, switch to Light
+                    const sidebar = localStorage.getItem('lightSidebar') || '#ffffff';
+                    const content = localStorage.getItem('lightContent') || '#f8fafc';
+                    window.themeManager.setSidebarColor(sidebar);
+                    window.themeManager.setContentColor(content);
+                } else {
+                    // Currently Light, switch to Dark
+                    const sidebar = localStorage.getItem('darkSidebar') || '#0f1117';
+                    const content = localStorage.getItem('darkContent') || '#020617';
+                    window.themeManager.setSidebarColor(sidebar);
+                    window.themeManager.setContentColor(content);
+                }
+            }
+        };
     </script>
 </head>
 
