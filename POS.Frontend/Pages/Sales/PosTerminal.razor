@@ -113,189 +113,192 @@
     </div>
 
     <!-- RIGHT: Cart / Receipt -->
-    <div class="w-80 shrink-0 flex flex-col bg-white dark:bg-surface rounded-2xl border border-border shadow-card overflow-hidden">
+    <div class="w-80 shrink-0 flex flex-col bg-white dark:bg-surface rounded-2xl border border-border shadow-card overflow-hidden relative">
 
         <!-- Cart header -->
-        <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+        <div class="px-5 py-4 border-b border-border flex items-center justify-between shrink-0 bg-white dark:bg-surface z-10">
             <p class="font-semibold text-gray-900 dark:text-gray-100 text-sm">Current Order</p>
             <button class="text-xs text-red-500 hover:underline" @onclick="ClearCart">Clear</button>
         </div>
 
-        <!-- Cart items -->
-        <div class="flex-1 overflow-y-auto divide-y divide-border/60">
-            @if (!CartItems.Any())
-            {
-                <div class="flex flex-col items-center justify-center h-full py-12 text-center">
-                    <div class="w-12 h-12 rounded-full bg-gray-50 dark:bg-surface flex items-center justify-center mb-3">
-                        <svg class="w-5 h-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4" /></svg>
-                    </div>
-                    <p class="text-sm text-muted">Cart is empty</p>
-                    <p class="text-xs text-gray-400 mt-1">Tap a product to add it</p>
-                </div>
-            }
-            else
-            {
-                @foreach (var item in CartItems)
+        <!-- Scrollable Area -->
+        <div class="flex-1 overflow-y-auto flex flex-col">
+            <!-- Cart items -->
+            <div class="flex-1 divide-y divide-border/60">
+                @if (!CartItems.Any())
                 {
-                    <div class="flex items-center gap-3 px-4 py-3">
-                        <span class="text-lg">@item.Icon</span>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">@item.Name</p>
-                            <p class="text-xs text-accent font-semibold">@item.Price.ToString("N0") MMK</p>
+                    <div class="flex flex-col items-center justify-center h-full min-h-[150px] py-12 text-center">
+                        <div class="w-12 h-12 rounded-full bg-gray-50 dark:bg-surface flex items-center justify-center mb-3">
+                            <svg class="w-5 h-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4" /></svg>
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <button class="w-5 h-5 rounded-md bg-gray-100 dark:bg-border/30 text-gray-600 dark:text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-200"
-                                    @onclick="() => ChangeQty(item, -1)">−</button>
-                            <input type="number" 
-                                   class="w-10 h-6 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white text-xs font-semibold text-center border border-gray-300 dark:border-gray-600 focus:border-accent outline-none transition-colors" 
-                                   value="@item.Qty" 
-                                   @onchange="@((ChangeEventArgs e) => HandleQtyInputChange(item, e))" />
-                            <button class="w-5 h-5 rounded-md bg-accent/10 text-accent text-xs font-bold flex items-center justify-center hover:bg-accent/20"
-                                    @onclick="() => ChangeQty(item, 1)">+</button>
-                        </div>
+                        <p class="text-sm text-muted">Cart is empty</p>
+                        <p class="text-xs text-gray-400 mt-1">Tap a product to add it</p>
                     </div>
                 }
-            }
-        </div>
-
-        <!-- Totals -->
-        <div class="px-5 py-4 border-t border-border space-y-2">
-            <div class="flex justify-between text-xs text-muted">
-                <span>Subtotal</span><span>@Subtotal.ToString("N0") MMK</span>
-            </div>
-            <div class="flex justify-between text-xs text-muted">
-                <span>Tax (5%)</span><span>@Tax.ToString("N0") MMK</span>
-            </div>
-            <div class="flex justify-between text-sm font-bold text-gray-900 dark:text-gray-100 pt-2 border-t border-border">
-                <span>Total</span><span>@Total.ToString("N0") MMK</span>
-            </div>
-            @if (selectedCustomerId.HasValue && selectedCustomerId.Value != Guid.Empty && CartItems.Any() && applyLoyalty)
-            {
-                <div class="flex justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400 pt-1">
-                    <span>Points to earn</span><span>+@CalculateEarnedPoints().ToString("N0")</span>
-                </div>
-            }
-        </div>
-
-        <!-- Loyalty Toggle -->
-        @if (selectedCustomerId.HasValue && selectedCustomerId.Value != Guid.Empty)
-        {
-            <div class="px-5 pb-2 flex items-center justify-between">
-                <div class="flex flex-col">
-                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Apply Loyalty Points</span>
-                    <span class="text-[10px] text-gray-400">@(applyLoyalty ? $"Earns +{CalculateEarnedPoints():N0} pts" : "Skipped for this sale")</span>
-                </div>
-                <button class="relative w-10 h-5 rounded-full transition-colors duration-200 focus:outline-none
-                              @(applyLoyalty ? "bg-accent" : "bg-gray-300 dark:bg-gray-600")"
-                        @onclick="() => applyLoyalty = !applyLoyalty">
-                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200
-                                @(applyLoyalty ? "translate-x-5" : "translate-x-0")"></span>
-                </button>
-            </div>
-        }
-
-        <!-- Customer select -->
-        <div class="px-5 pb-3">
-            <select class="form-input text-xs" value="@selectedCustomerId" @onchange="HandleCustomerChange">
-                <option value="">— Walk-in Customer —</option>
-                @foreach (var c in CustomerList)
+                else
                 {
-                    <option value="@c.Id">@c.Name</option>
-                }
-            </select>
-        </div>
-
-        @if (selectedCustomerId.HasValue && selectedCustomerId.Value != Guid.Empty && selectedCustomerLoyalty != null)
-        {
-            <div class="px-5 pb-3">
-                <div class="p-3 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 rounded-xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-bl-full pointer-events-none"></div>
-                    <div class="flex justify-between items-start mb-1">
-                        <span class="text-xs font-bold text-gray-800 dark:text-gray-200">Loyalty Account</span>
-                        @if (!string.IsNullOrEmpty(selectedCustomerLoyalty.Tier))
-                        {
-                            <span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 text-[9px] font-bold uppercase tracking-wider rounded">@selectedCustomerLoyalty.Tier</span>
-                        }
-                    </div>
-                    <div class="flex items-baseline gap-1 mt-1">
-                        <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">@selectedCustomerLoyalty.CurrentBalance.ToString("N0")</span>
-                        <span class="text-[10px] text-gray-500 font-medium">pts available</span>
-                    </div>
-                </div>
-            </div>
-
-            @if (reachableNow.Any() || reachableAfterSale.Any())
-            {
-                <div class="px-5 pb-3 space-y-2">
-                    @if (reachableNow.Any())
+                    @foreach (var item in CartItems)
                     {
-                        <div class="rounded-xl overflow-hidden shadow-md shadow-purple-200/60 dark:shadow-purple-900/20">
-                            <div class="bg-gradient-to-r from-violet-600 to-purple-700 px-3 py-2 flex items-center gap-1.5">
-                                <span class="text-sm">🎁</span>
-                                <p class="text-[11px] font-extrabold text-white uppercase tracking-widest flex-1">Rewards Available</p>
-                                <span class="text-[10px] bg-white/20 text-white font-bold px-1.5 py-0.5 rounded-full">@reachableNow.Count</span>
+                        <div class="flex items-center gap-3 px-4 py-3">
+                            <span class="text-lg">@item.Icon</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">@item.Name</p>
+                                <p class="text-xs text-accent font-semibold">@item.Price.ToString("N0") MMK</p>
                             </div>
-                            <div class="bg-white dark:bg-surface divide-y divide-purple-100 dark:divide-purple-900/30">
-                                @foreach (var reward in reachableNow)
-                                {
-                                    var rName = reward.Name.Contains(": ") ? reward.Name.Split(": ", 2)[1] : reward.Name;
-                                    var rState = GetPosClaimState(reward.Id);
-                                    var rIsPending = rState == PosClaimState.Pending;
-                                    var rIsSuccess = rState == PosClaimState.Success;
-                                    <div class="flex items-center gap-2 px-3 py-2">
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate">@rName</p>
-                                            <p class="text-[10px] text-purple-500 font-semibold">@reward.PointCost.ToString("N0") pts</p>
-                                        </div>
-                                        @if (rIsSuccess)
-                                        {
-                                            <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-lg whitespace-nowrap">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                                Claimed!
-                                            </span>
-                                        }
-                                        else if (rIsPending)
-                                        {
-                                            <span class="flex items-center gap-1 text-[10px] font-bold text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 px-2 py-1 rounded-lg whitespace-nowrap">
-                                                <div class="w-2.5 h-2.5 border-2 border-yellow-400/40 border-t-yellow-600 rounded-full animate-spin"></div>
-                                                Pending
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            var cartNotEmpty = CartItems.Any();
-                                            <button class="text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap shadow-sm
-                                                        @(cartNotEmpty ? "bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700 active:scale-95 text-white")"
-                                                    disabled="@(PosIsClaiming || cartNotEmpty)"
-                                                    title="@(cartNotEmpty ? "Complete checkout first" : "")"
-                                                    @onclick="() => ClaimRewardFromPos(reward)">
-                                                @(cartNotEmpty ? "Checkout first" : "Redeem")
-                                            </button>
-                                        }
-                                    </div>
-                                }
+                            <div class="flex items-center gap-1.5">
+                                <button class="w-5 h-5 rounded-md bg-gray-100 dark:bg-border/30 text-gray-600 dark:text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-200"
+                                        @onclick="() => ChangeQty(item, -1)">−</button>
+                                <input type="number" 
+                                       class="w-10 h-6 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white text-xs font-semibold text-center border border-gray-300 dark:border-gray-600 focus:border-accent outline-none transition-colors" 
+                                       value="@item.Qty" 
+                                       @onchange="@((ChangeEventArgs e) => HandleQtyInputChange(item, e))" />
+                                <button class="w-5 h-5 rounded-md bg-accent/10 text-accent text-xs font-bold flex items-center justify-center hover:bg-accent/20"
+                                        @onclick="() => ChangeQty(item, 1)">+</button>
                             </div>
                         </div>
                     }
-                    @if (reachableAfterSale.Any() && applyLoyalty)
+                }
+            </div>
+
+            <!-- Totals -->
+            <div class="px-5 py-4 border-t border-border space-y-2 mt-auto shrink-0">
+                <div class="flex justify-between text-xs text-muted">
+                    <span>Subtotal</span><span>@Subtotal.ToString("N0") MMK</span>
+                </div>
+                <div class="flex justify-between text-xs text-muted">
+                    <span>Tax (5%)</span><span>@Tax.ToString("N0") MMK</span>
+                </div>
+                <div class="flex justify-between text-sm font-bold text-gray-900 dark:text-gray-100 pt-2 border-t border-border">
+                    <span>Total</span><span>@Total.ToString("N0") MMK</span>
+                </div>
+                @if (selectedCustomerId.HasValue && selectedCustomerId.Value != Guid.Empty && CartItems.Any() && applyLoyalty)
+                {
+                    <div class="flex justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400 pt-1">
+                        <span>Points to earn</span><span>+@CalculateEarnedPoints().ToString("N0")</span>
+                    </div>
+                }
+            </div>
+
+            <!-- Loyalty Toggle -->
+            @if (selectedCustomerId.HasValue && selectedCustomerId.Value != Guid.Empty)
+            {
+                <div class="px-5 pb-2 flex items-center justify-between shrink-0">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Apply Loyalty Points</span>
+                        <span class="text-[10px] text-gray-400">@(applyLoyalty ? $"Earns +{CalculateEarnedPoints():N0} pts" : "Skipped for this sale")</span>
+                    </div>
+                    <button class="relative w-10 h-5 rounded-full transition-colors duration-200 focus:outline-none
+                                  @(applyLoyalty ? "bg-accent" : "bg-gray-300 dark:bg-gray-600")"
+                            @onclick="() => applyLoyalty = !applyLoyalty">
+                        <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200
+                                    @(applyLoyalty ? "translate-x-5" : "translate-x-0")"></span>
+                    </button>
+                </div>
+            }
+
+            <!-- Customer select -->
+            <div class="px-5 pb-3 shrink-0">
+                <select class="form-input text-xs" value="@selectedCustomerId" @onchange="HandleCustomerChange">
+                    <option value="">— Walk-in Customer —</option>
+                    @foreach (var c in CustomerList)
                     {
-                        <div class="p-2.5 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/10 dark:to-teal-900/10 border border-emerald-200/50 dark:border-emerald-800/20 rounded-xl">
-                            <p class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">✨ Unlocks after this purchase</p>
-                            @foreach (var r in reachableAfterSale)
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+
+            @if (selectedCustomerId.HasValue && selectedCustomerId.Value != Guid.Empty && selectedCustomerLoyalty != null)
+            {
+                <div class="px-5 pb-3 shrink-0">
+                    <div class="p-3 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 rounded-xl relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-bl-full pointer-events-none"></div>
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-xs font-bold text-gray-800 dark:text-gray-200">Loyalty Account</span>
+                            @if (!string.IsNullOrEmpty(selectedCustomerLoyalty.Tier))
                             {
-                                var rn = r.Name.Contains(": ") ? r.Name.Split(": ", 2)[1] : r.Name;
-                                <p class="text-[10px] text-emerald-600 dark:text-emerald-500 font-medium truncate">• @rn <span class="text-emerald-400">(@r.PointCost.ToString("N0") pts)</span></p>
+                                <span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 text-[9px] font-bold uppercase tracking-wider rounded">@selectedCustomerLoyalty.Tier</span>
                             }
                         </div>
-                    }
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">@selectedCustomerLoyalty.CurrentBalance.ToString("N0")</span>
+                            <span class="text-[10px] text-gray-500 font-medium">pts available</span>
+                        </div>
+                    </div>
                 </div>
+
+                @if (reachableNow.Any() || reachableAfterSale.Any())
+                {
+                    <div class="px-5 pb-3 space-y-2 shrink-0">
+                        @if (reachableNow.Any())
+                        {
+                            <div class="rounded-xl overflow-hidden shadow-md shadow-purple-200/60 dark:shadow-purple-900/20">
+                                <div class="bg-gradient-to-r from-violet-600 to-purple-700 px-3 py-2 flex items-center gap-1.5">
+                                    <span class="text-sm">🎁</span>
+                                    <p class="text-[11px] font-extrabold text-white uppercase tracking-widest flex-1">Rewards Available</p>
+                                    <span class="text-[10px] bg-white/20 text-white font-bold px-1.5 py-0.5 rounded-full">@reachableNow.Count</span>
+                                </div>
+                                <div class="bg-white dark:bg-surface divide-y divide-purple-100 dark:divide-purple-900/30">
+                                    @foreach (var reward in reachableNow)
+                                    {
+                                        var rName = reward.Name.Contains(": ") ? reward.Name.Split(": ", 2)[1] : reward.Name;
+                                        var rState = GetPosClaimState(reward.Id);
+                                        var rIsPending = rState == PosClaimState.Pending;
+                                        var rIsSuccess = rState == PosClaimState.Success;
+                                        <div class="flex items-center gap-2 px-3 py-2">
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate">@rName</p>
+                                                <p class="text-[10px] text-purple-500 font-semibold">@reward.PointCost.ToString("N0") pts</p>
+                                            </div>
+                                            @if (rIsSuccess)
+                                            {
+                                                <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-lg whitespace-nowrap">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                    Claimed!
+                                                </span>
+                                            }
+                                            else if (rIsPending)
+                                            {
+                                                <span class="flex items-center gap-1 text-[10px] font-bold text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 px-2 py-1 rounded-lg whitespace-nowrap">
+                                                    <div class="w-2.5 h-2.5 border-2 border-yellow-400/40 border-t-yellow-600 rounded-full animate-spin"></div>
+                                                    Pending
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                var cartNotEmpty = CartItems.Any();
+                                                <button class="text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap shadow-sm
+                                                            @(cartNotEmpty ? "bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700 active:scale-95 text-white")"
+                                                        disabled="@(PosIsClaiming || cartNotEmpty)"
+                                                        title="@(cartNotEmpty ? "Complete checkout first" : "")"
+                                                        @onclick="() => ClaimRewardFromPos(reward)">
+                                                    @(cartNotEmpty ? "Checkout first" : "Redeem")
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (reachableAfterSale.Any() && applyLoyalty)
+                        {
+                            <div class="p-2.5 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/10 dark:to-teal-900/10 border border-emerald-200/50 dark:border-emerald-800/20 rounded-xl">
+                                <p class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">✨ Unlocks after this purchase</p>
+                                @foreach (var r in reachableAfterSale)
+                                {
+                                    var rn = r.Name.Contains(": ") ? r.Name.Split(": ", 2)[1] : r.Name;
+                                    <p class="text-[10px] text-emerald-600 dark:text-emerald-500 font-medium truncate">• @rn <span class="text-emerald-400">(@r.PointCost.ToString("N0") pts)</span></p>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
             }
-        }
+        </div>
 
         <!-- Status Message -->
         @if (!string.IsNullOrEmpty(statusMessage))
         {
-            <div class="px-5 pb-3">
+            <div class="px-5 pb-3 shrink-0">
                 <div class="p-2 rounded text-xs @(isError ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600")">
                     @statusMessage
                 </div>
@@ -303,7 +306,7 @@
         }
 
         <!-- Charge button -->
-        <div class="px-5 pb-5">
+        <div class="p-5 border-t border-border shrink-0 bg-white dark:bg-surface z-10">
             <button class="w-full btn-primary justify-center py-3 text-sm font-semibold rounded-xl @(CartItems.Any() && !isProcessing ? "" : "opacity-50 cursor-not-allowed")"
                     @onclick="HandleCheckout" disabled="@(isProcessing || !CartItems.Any())">
                 @if (isProcessing)

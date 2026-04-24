@@ -156,19 +156,21 @@
                                             </span>
                                         </td>
                                         <td class="text-right">
-                                            @if (string.Equals(item.Status, "Pending", StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                var isBusy = _fulfillingRedemptionIds.Contains(item.Id);
-                                                <button class="btn-secondary py-1 px-2 text-xs"
-                                                        disabled="@isBusy"
-                                                        @onclick="() => FulfillRedemption(item.Id)">
-                                                    @(isBusy ? "Fulfilling..." : "Mark Fulfill")
-                                                </button>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-xs text-muted">-</span>
-                                            }
+                                            <div class="flex justify-end">
+                                                @if (string.Equals(item.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    var isBusy = _fulfillingRedemptionIds.Contains(item.Id);
+                                                    <button class="btn-secondary py-1 px-2 text-xs"
+                                                            disabled="@isBusy"
+                                                            @onclick="() => FulfillRedemption(item.Id)">
+                                                        @(isBusy ? "Fulfilling..." : "Mark Fulfill")
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-xs text-muted">-</span>
+                                                }
+                                            </div>
                                         </td>
                                     </tr>
                                 }
