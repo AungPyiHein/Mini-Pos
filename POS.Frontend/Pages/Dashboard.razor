@@ -524,14 +524,9 @@
 
     private async Task LoadCustomerCount()
     {
-        // Need a merchant ID to query customers
-        var merchantResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 1 });
-        var firstMerchant = merchantResponse?.Data?.Data?.FirstOrDefault();
-        if (firstMerchant == null) return;
-
-        var customerResponse = await CustomerService.GetCustomersAsync(
-            firstMerchant.Id, new PaginationFilter { PageNumber = 1, PageSize = 1 });
-        _customerCount = (int)(customerResponse?.Data?.TotalRecords ?? 0);
+        var response = await CustomerService.GetCustomersAsync(
+            Guid.Empty, new PaginationFilter { PageNumber = 1, PageSize = 1 });
+        _customerCount = (int)(response?.Data?.TotalRecords ?? 0);
     }
 
     private string GetProductIcon(string category)

@@ -30,14 +30,14 @@ namespace POS.Backend.Features.Category
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Category retrieved successfully", Data = result.Value }) : NotFound(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPost]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        [Authorize(Policy = "Management")]
         public async Task<IActionResult> CreateCategory(CreateCategoryRequest request)
         {
             var result = await _categoryServices.CreateCategoryAsync(request);
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Category Created", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        [Authorize(Policy = "Management")]
         public async Task<IActionResult> UpdateCategory(Guid id, UpdateCategoryRequest request)
         {
             if (id != request.Id)
@@ -46,7 +46,7 @@ namespace POS.Backend.Features.Category
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Category Updated" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        [Authorize(Policy = "Management")]
         public async Task<IActionResult> DeleteCategory(Guid id)
         {
             var result = await _categoryServices.DeleteCategoryAsync(id);

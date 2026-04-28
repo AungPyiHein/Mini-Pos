@@ -13,10 +13,12 @@ public interface ICurrentUserService
     Guid? MerchantId { get; }
     Guid? BranchId { get; }
     bool IsAuthenticated { get; }
+    void SetUser(POS.data.Entities.User user);
 }
 
 public class CurrentUserService : ICurrentUserService
 {
+    private POS.data.Entities.User? _cachedUser;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public CurrentUserService(IHttpContextAccessor httpContextAccessor)
@@ -26,16 +28,24 @@ public class CurrentUserService : ICurrentUserService
 
     private ClaimsPrincipal? User => _httpContextAccessor.HttpContext?.User;
 
+    public void SetUser(POS.data.Entities.User user)
+    {
+        _cachedUser = user;
+    }
+
     public Guid UserId
     {
         get
         {
-            var id = User?.FindFirst("UserId")?.Value;
+            if (_cachedUser != null) return _cachedUser.Id;
+            var id = User?.FindFirst("UserId")?.Value 
+                     ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return Guid.TryParse(id, out var result) ? result : Guid.Empty;
         }
     }
 
-    public string Username => User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+    public string Username => _cachedUser?.Username 
+                              ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                               ?? User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
                               ?? string.Empty;
 
@@ -43,27 +53,24 @@ public class CurrentUserService : ICurrentUserService
     {
         get
         {
-            var roleStr = User?.FindFirst(ClaimTypes.Role)?.Value ?? User?.FindFirst("role")?.Value;
+            if (_cachedUser != null)
+            {
+                return Enum.TryParse<UserRole>(_cachedUser.Role, true, out var r) ? r : UserRole.Staff;
+            }
+            var roleStr = User?.FindFirst(ClaimTypes.Role)?.Value 
+                          ?? User?.FindFirst("role")?.Value;
             return Enum.TryParse<UserRole>(roleStr, true, out var role) ? role : UserRole.Staff;
         }
     }
 
-    public Guid? MerchantId
-    {
-        get
-        {
-            var idString = User?.FindFirst("MerchantId")?.Value ?? User?.FindFirst("merchantId")?.Value;
-            return string.IsNullOrWhiteSpace(idString) ? null : Guid.Parse(idString);
-        }
-    }
+    public Guid? MerchantId => _cachedUser != null ? _cachedUser.MerchantId : GetClaimGuid("MerchantId");
 
-    public Guid? BranchId
+    public Guid? BranchId => _cachedUser != null ? _cachedUser.BranchId : GetClaimGuid("BranchId");
+
+    private Guid? GetClaimGuid(string claimType)
     {
-        get
-        {
-            var idString = User?.FindFirst("BranchId")?.Value;
-            return string.IsNullOrWhiteSpace(idString) ? null : Guid.Parse(idString);
-        }
+        var idString = User?.FindFirst(claimType)?.Value;
+        return string.IsNullOrWhiteSpace(idString) ? null : Guid.Parse(idString);
     }
 
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;

@@ -6,7 +6,7 @@ namespace POS.Backend.Features.Sales
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+    [Authorize(Policy = "AllStaff")]
     public class SalesController : ControllerBase
     {
         private readonly ISalesServices _salesServices;

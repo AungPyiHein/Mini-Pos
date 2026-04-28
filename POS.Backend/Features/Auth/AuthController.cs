@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using POS.Shared.Models;
+using POS.Backend.Common;
 
 namespace POS.Backend.Features.Auth
 {
@@ -8,10 +9,12 @@ namespace POS.Backend.Features.Auth
     public class AuthController : ControllerBase
     {
         private readonly IAuthServices _authServices;
+        private readonly ICurrentUserService _currentUser;
 
-        public AuthController(IAuthServices authServices)
+        public AuthController(IAuthServices authServices, ICurrentUserService currentUser)
         {
             _authServices = authServices;
+            _currentUser = currentUser;
         }
 
         [Microsoft.AspNetCore.Authorization.AllowAnonymous]
@@ -57,17 +60,16 @@ namespace POS.Backend.Features.Auth
         [HttpGet("me")]
         public IActionResult Me()
         {
-            var user = HttpContext.User;
-            if (user?.Identity?.IsAuthenticated != true)
+            if (!_currentUser.IsAuthenticated)
                 return Unauthorized();
 
             return Ok(new AuthResponse
             {
-                Username = user.FindFirst("sub")?.Value ?? user.Identity.Name ?? "",
-                Role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "",
-                UserId = Guid.TryParse(user.FindFirst("UserId")?.Value, out var uid) ? uid : null,
-                MerchantId = Guid.TryParse(user.FindFirst("MerchantId")?.Value, out var mid) ? mid : null,
-                BranchId = Guid.TryParse(user.FindFirst("BranchId")?.Value, out var bid) ? bid : null
+                Username = _currentUser.Username,
+                Role = _currentUser.Role.ToString(),
+                UserId = _currentUser.UserId,
+                MerchantId = _currentUser.MerchantId,
+                BranchId = _currentUser.BranchId
             });
         }
     }

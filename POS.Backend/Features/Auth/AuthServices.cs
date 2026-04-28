@@ -169,10 +169,7 @@ namespace POS.Backend.Features.Auth
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Username),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim("UserId", user.Id.ToString()),
-                new Claim("MerchantId", user.MerchantId?.ToString() ?? ""),
-                new Claim("BranchId", user.BranchId?.ToString() ?? "")
+                new Claim("UserId", user.Id.ToString())
             };
 
             var expiryMinutes = double.Parse(_configuration["Jwt:ExpiryInMinutes"] ?? "60");

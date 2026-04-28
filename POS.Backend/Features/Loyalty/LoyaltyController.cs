@@ -121,7 +121,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpGet("customer/{customerId}")]
-        [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+        [Authorize(Policy = "AllStaff")]
         public async Task<ActionResult<Result<LoyaltyAccountResponse>>> GetCustomerLoyalty(Guid customerId)
         {
             var scope = await ResolveCustomerScopeAsync(customerId);
@@ -136,7 +136,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpGet("customer/{customerId}/history")]
-        [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+        [Authorize(Policy = "AllStaff")]
         public async Task<ActionResult<Result<List<LoyaltyHistoryDto>>>> GetCustomerHistory(Guid customerId)
         {
             var scope = await ResolveCustomerScopeAsync(customerId);
@@ -151,7 +151,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpGet("rewards")]
-        [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+        [Authorize(Policy = "AllStaff")]
         public async Task<ActionResult<Result<List<LoyaltyReward>>>> GetRewards([FromQuery] Guid? customerId = null, [FromQuery] Guid? merchantId = null)
         {
             if (customerId.HasValue && customerId != Guid.Empty)
@@ -178,7 +178,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpGet("rules")]
-        [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+        [Authorize(Policy = "AllStaff")]
         public async Task<ActionResult<Result<List<LoyaltyRuleDto>>>> GetRules()
         {
             if (IsMerchantScopedUser() && !_currentUser.MerchantId.HasValue)
@@ -192,7 +192,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpPost("claim")]
-        [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+        [Authorize(Policy = "AllStaff")]
         public async Task<ActionResult<Result<bool>>> ClaimReward([FromBody] ClaimRewardRequest request)
         {
             var scope = await ResolveCustomerScopeAsync(request.CustomerId);
@@ -207,7 +207,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpGet("admin/stats")]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        [Authorize(Policy = "Management")]
         public async Task<ActionResult<Result<LoyaltyAdminStatsResponse>>> GetAdminStats([FromQuery] Guid? merchantId = null)
         {
             var scope = await ResolveMerchantScopeAsync(merchantId);
@@ -221,7 +221,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpGet("admin/redemptions/history")]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        [Authorize(Policy = "Management")]
         public async Task<ActionResult<Result<PagedRedemptionHistoryResponse>>> GetRedemptionHistory([FromQuery] Guid? merchantId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? status = null, [FromQuery] string? searchTerm = null)
         {
             var scope = await ResolveMerchantScopeAsync(merchantId);
@@ -262,7 +262,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpGet("admin/global-ledger")]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        [Authorize(Policy = "Management")]
         public async Task<ActionResult<Result<PagedLedgerHistoryResponse>>> GetGlobalLedger([FromQuery] Guid? merchantId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null)
         {
             var scope = await ResolveMerchantScopeAsync(merchantId);
@@ -277,7 +277,7 @@ namespace POS.Backend.Features.Loyalty
         }
 
         [HttpPost("admin/redemptions/{redemptionId:guid}/fulfill")]
-        [Authorize(Roles = "Admin,MerchantAdmin")]
+        [Authorize(Policy = "Management")]
         public async Task<ActionResult<Result<bool>>> FulfillRedemption(Guid redemptionId, [FromQuery] Guid? merchantId = null)
         {
             var scope = await ResolveMerchantScopeAsync(merchantId);

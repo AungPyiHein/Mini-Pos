@@ -4,7 +4,7 @@ using POS.Backend.Features.User;
 
 namespace POS.Backend.Features.User
 {
-    [Authorize(Roles = "Admin,MerchantAdmin,Staff")]
+    [Authorize(Policy = "AllStaff")]
     [ApiController]
     [Route("api/[controller]")]
     public class UsersController : ControllerBase
