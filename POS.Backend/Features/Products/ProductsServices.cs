@@ -7,23 +7,23 @@ namespace POS.Backend.Features.Products
     public class ProductsResponseDto
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public decimal Price { get; set; }
-        public string SKU { get; set; }
+        public string SKU { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Barcode { get; set; }
-        public string CategoryName { get; set; }
-        public string CategoryDescription { get; set; }
-        public string MerchantName { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string CategoryDescription { get; set; } = string.Empty;
+        public string MerchantName { get; set; } = string.Empty;
         public Guid CategoryId { get; set; }
         public Guid MerchantId { get; set; }
-
+        public int StockQuantity { get; set; }
     }
     public class CreateProductRequest
     {
         public string Name { get; set; } = string.Empty;
         public decimal Price { get; set; }
-        public string SKU { get; set; }
+        public string SKU { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Barcode { get; set; }
         public Guid CategoryId { get; set; }
@@ -81,11 +81,42 @@ namespace POS.Backend.Features.Products
                 query = query.Where(p => p.CategoryId == filter.CategoryId);
             }
 
+            if (filter.LowStockOnly)
+            {
+                if (_currentUser.Role == POS.Shared.Models.UserRole.Staff && _currentUser.BranchId.HasValue)
+                {
+                    query = query.Where(p => p.BranchInventories.Any(i => i.BranchId == _currentUser.BranchId.Value && i.StockQuantity < filter.LowStockThreshold));
+                }
+                else if (_currentUser.Role == POS.Shared.Models.UserRole.MerchantAdmin && _currentUser.MerchantId.HasValue)
+                {
+                    if (filter.BranchId.HasValue)
+                    {
+                        query = query.Where(p => p.BranchInventories.Any(i => i.BranchId == filter.BranchId.Value && i.StockQuantity < filter.LowStockThreshold));
+                    }
+                    else
+                    {
+                        query = query.Where(p => p.BranchInventories.Any(i => i.Branch.MerchantId == _currentUser.MerchantId.Value && i.StockQuantity < filter.LowStockThreshold));
+                    }
+                }
+                else if (_currentUser.Role == POS.Shared.Models.UserRole.Admin)
+                {
+                    if (filter.BranchId.HasValue)
+                    {
+                        query = query.Where(p => p.BranchInventories.Any(i => i.BranchId == filter.BranchId.Value && i.StockQuantity < filter.LowStockThreshold));
+                    }
+                    else
+                    {
+                        query = query.Where(p => p.BranchInventories.Any(i => i.StockQuantity < filter.LowStockThreshold));
+                    }
+                }
+            }
+
             var totalRecords = await query.CountAsync();
 
             var products = await query
                 .Include(p => p.Category)
                 .Include(p => p.Merchant)
+                .Include(p => p.BranchInventories)
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .ToListAsync();
@@ -102,7 +133,10 @@ namespace POS.Backend.Features.Products
                 CategoryDescription = p.Category?.Description ?? "No Description",
                 CategoryId = p.CategoryId,
                 MerchantName = p.Merchant?.Name ?? "Unknown Merchant",
-                MerchantId = p.MerchantId
+                MerchantId = p.MerchantId,
+                StockQuantity = filter.BranchId.HasValue 
+                    ? (p.BranchInventories?.FirstOrDefault(i => i.BranchId == filter.BranchId.Value)?.StockQuantity ?? 0)
+                    : (p.BranchInventories?.Sum(i => i.StockQuantity) ?? 0)
             }).ToList();
 
             var pagedResponse = new PagedResponse<ProductsResponseDto>(response, totalRecords, filter.PageNumber, filter.PageSize);
@@ -131,10 +165,11 @@ namespace POS.Backend.Features.Products
                     Description = p.Description,
                     Barcode = p.Barcode,
                     CategoryName = p.Category != null ? p.Category.Name : "No Category",
-                    CategoryDescription = p.Category != null ? p.Category.Description : "No Description",
+                    CategoryDescription = (p.Category != null && p.Category.Description != null) ? p.Category.Description : "No Description",
                     CategoryId = p.CategoryId,
                     MerchantName = p.Merchant != null ? p.Merchant.Name : "Unknown Merchant",
-                    MerchantId = p.MerchantId
+                    MerchantId = p.MerchantId,
+                    StockQuantity = p.BranchInventories != null ? p.BranchInventories.Sum(i => i.StockQuantity) : 0
                 })
                 .FirstOrDefaultAsync();
             if (product == null)
@@ -277,6 +312,7 @@ namespace POS.Backend.Features.Products
             var products = await query
                 .Include(p => p.Category)
                 .Include(p => p.Merchant)
+                .Include(p => p.BranchInventories)
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .ToListAsync();
@@ -293,7 +329,10 @@ namespace POS.Backend.Features.Products
                 CategoryDescription = p.Category?.Description ?? "No Description",
                 CategoryId = p.CategoryId,
                 MerchantName = p.Merchant?.Name ?? "Unknown Merchant",
-                MerchantId = p.MerchantId
+                MerchantId = p.MerchantId,
+                StockQuantity = filter.BranchId.HasValue 
+                    ? (p.BranchInventories?.FirstOrDefault(i => i.BranchId == filter.BranchId.Value)?.StockQuantity ?? 0)
+                    : (p.BranchInventories?.Sum(i => i.StockQuantity) ?? 0)
             }).ToList();
 
             var pagedResponse = new PagedResponse<ProductsResponseDto>(response, totalRecords, filter.PageNumber, filter.PageSize);

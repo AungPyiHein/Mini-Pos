@@ -6,14 +6,14 @@
 
 <div class="space-y-5">
 
-    <div class="page-header">
-        <div>
-            <h2 class="page-title">Merchants</h2>
-            <p class="page-subtitle">Super Admin view of all businesses</p>
+    <div class="flex items-center justify-between mb-3 shrink-0 px-1">
+        <div class="flex items-baseline gap-2">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Merchants</h2>
+            <p class="text-[10px] text-muted hidden md:inline-block">Super Admin view of businesses</p>
         </div>
-        <button class="btn-primary" @onclick="ShowAddModal">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-            Register Merchant
+        <button class="btn-primary py-1.5 px-3 text-xs" @onclick="ShowAddModal">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Register
         </button>
     </div>
 
@@ -29,14 +29,14 @@
             @ErrorMessage
         </div>
     }
-    <div class="card">
-        <div class="card-header shrink-0">
+    <div class="card flex-1 flex flex-col min-h-0">
+        <div class="card-header shrink-0 py-2 px-3">
             <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full">
-                <div class="flex gap-3 flex-wrap items-center">
+                <div class="flex gap-2 flex-wrap items-center">
                     <div class="relative">
-                        <input type="text" placeholder="Search merchants…" class="form-input max-w-xs pl-9" 
+                        <input type="text" placeholder="Search..." class="form-input max-w-[160px] pl-8 py-1.5 text-xs" 
                                @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
-                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         @if (IsSearching)
                         {
                             <div class="absolute right-3 top-2.5 w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
@@ -45,15 +45,13 @@
                 </div>
 
                 <!-- View Toggle -->
-                <div class="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg shrink-0">
-                    <button class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors @(!isGridView ? "bg-white dark:bg-surface text-accent shadow-sm" : "text-gray-500 hover:text-gray-700")"
+                <div class="flex bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg shrink-0">
+                    <button class="px-2 py-1 rounded-md text-[10px] font-bold transition-colors @(!isGridView ? "bg-white dark:bg-surface text-accent shadow-sm" : "text-gray-500 hover:text-gray-700")"
                             @onclick="() => isGridView = false">
-                        <svg class="w-4 h-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
                         List
                     </button>
-                    <button class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors @(isGridView ? "bg-white dark:bg-surface text-accent shadow-sm" : "text-gray-500 hover:text-gray-700")"
+                    <button class="px-2 py-1 rounded-md text-[10px] font-bold transition-colors @(isGridView ? "bg-white dark:bg-surface text-accent shadow-sm" : "text-gray-500 hover:text-gray-700")"
                             @onclick="() => isGridView = true">
-                        <svg class="w-4 h-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                         Grid
                     </button>
                 </div>

@@ -26,5 +26,7 @@ namespace POS.Shared.Models
         public DateTime? EndDate { get; set; }
         public string? SortColumn { get; set; }
         public string SortDirection { get; set; } = "asc";
+        public bool LowStockOnly { get; set; } = false;
+        public int LowStockThreshold { get; set; } = 5;
     }
 }

@@ -14,38 +14,55 @@
 
 <div class="space-y-5 h-full flex flex-col relative overflow-hidden">
 
-    <div class="page-header shrink-0">
-        <div>
-            <h2 class="page-title">Products & Inventory</h2>
-            <p class="page-subtitle">Manage your product catalog and dynamic stock levels</p>
+    <div class="flex items-center justify-between mb-3 shrink-0 px-1">
+        <div class="flex items-baseline gap-2">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Products & Inventory</h2>
+            <p class="text-[10px] text-muted hidden md:inline-block">Manage catalog & stock levels</p>
         </div>
-        <button class="btn-primary" @onclick="OpenAddModal">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+        <button class="btn-primary py-1.5 px-3 text-xs" @onclick="OpenAddModal">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
             Add Product
         </button>
     </div>
 
     <div class="card flex-1 flex flex-col min-h-0">
-        <div class="card-header shrink-0">
+        <div class="card-header shrink-0 py-2 px-3">
             <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full">
                 <!-- Filters -->
-                <div class="flex gap-3 flex-wrap items-center">
+                <div class="flex gap-2 flex-wrap items-center">
                     <div class="relative">
-                        <input type="text" placeholder="Search products…" class="form-input max-w-xs pl-9" 
+                        <input type="text" placeholder="Search…" class="form-input max-w-[160px] pl-8 py-1.5 text-xs" 
                                @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
-                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         @if (isSearching)
                         {
                             <div class="absolute right-3 top-2.5 w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin"></div>
                         }
                     </div>
-                    <select class="form-input w-40" value="@SelectedCategoryIdString" @onchange="HandleCategoryChange">
+                    <select class="form-input w-36 py-1.5 text-xs" value="@SelectedCategoryIdString" @onchange="HandleCategoryChange">
                         <option value="">All Categories</option>
                         @foreach (var cat in CategoryList)
                         {
                             <option value="@cat.Id.ToString()">@cat.Name</option>
                         }
                     </select>
+
+                    @if (userRole == "Admin" || userRole == "MerchantAdmin")
+                    {
+                        <select class="form-input w-40 py-1.5 text-xs" @onchange="HandleBranchChange">
+                            <option value="">All Branches</option>
+                            @foreach (var branch in availableBranches)
+                            {
+                                <option value="@branch.Id">@branch.Name</option>
+                            }
+                        </select>
+                    }
+
+                    <label class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-surface border border-gray-100 dark:border-gray-800 rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 transition-colors group">
+                        <input type="checkbox" class="w-3.5 h-3.5 text-accent border-gray-300 rounded focus:ring-accent cursor-pointer" 
+                               checked="@lowStockOnly" @onchange="HandleLowStockChange" />
+                        <span class="text-[10px] font-bold text-gray-600 dark:text-gray-400 group-hover:text-accent transition-colors">Low Stock</span>
+                    </label>
                 </div>
                 
                 <!-- View Toggle -->
@@ -88,8 +105,14 @@
                             <div class="group bg-white dark:bg-surface border border-gray-100 dark:border-gray-800 rounded-xl p-3 hover:shadow-xl hover:border-accent/20 transition-all cursor-pointer transform hover:-translate-y-1"
                                  @onclick="() => OpenProfileDrawer(p)">
                                 <div class="flex justify-between items-start mb-3">
-                                    <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-xl group-hover:bg-accent group-hover:text-white transition-colors">
-                                        @CategoryIconHelper.GetIcon(p.CategoryName)
+                                    <div class="relative">
+                                        <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-xl group-hover:bg-accent group-hover:text-white transition-colors">
+                                            @CategoryIconHelper.GetIcon(p.CategoryName)
+                                        </div>
+                                        <div class="absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm border-2 border-white dark:border-surface
+                                                    @(p.StockQuantity < 5 ? "bg-red-500 text-white animate-pulse" : "bg-emerald-500 text-white")">
+                                            @p.StockQuantity
+                                        </div>
                                     </div>
                                     <span class="badge badge-info group-hover:bg-blue-100 transition-colors text-[10px] px-2 py-0.5">@p.CategoryName</span>
                                 </div>
@@ -120,11 +143,17 @@
                                     <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors" @onclick="() => OpenProfileDrawer(p)">
                                         <td>
                                             <div class="flex items-center gap-3">
+                                            <div class="relative">
                                                 <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-xl">
                                                     @CategoryIconHelper.GetIcon(p.CategoryName)
                                                 </div>
-                                                <span class="font-medium text-gray-900 dark:text-gray-100">@p.Name</span>
+                                                <div class="absolute -bottom-1 -right-1 min-w-[18px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold shadow-sm border-2 border-white dark:border-surface
+                                                            @(p.StockQuantity < 5 ? "bg-red-500 text-white" : "bg-emerald-500 text-white")">
+                                                    @p.StockQuantity
+                                                </div>
                                             </div>
+                                            <span class="font-medium text-gray-900 dark:text-gray-100">@p.Name</span>
+                                        </div>
                                         </td>
                                         <td><span class="badge badge-info">@p.CategoryName</span></td>
                                         <td class="text-gray-500 text-sm">@p.SKU</td>
@@ -458,11 +487,15 @@
     private bool isSearching = false;
     private CancellationTokenSource? _searchCts;
     private Guid? selectedCategoryId;
+    private Guid? selectedBranchId;
+    private List<BranchResponseDto> availableBranches = new();
+    private bool lowStockOnly = false;
     private ProductFormModel formModel = new();
 
     // Auth state
     private string userRole = "";
     private Guid? userBranchId;
+    private Guid? userMerchantId;
 
     // Pagination
     private int currentPage = 1;
@@ -503,15 +536,29 @@
         var user = authState.User;
         userRole = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
                    ?? user.FindFirst("role")?.Value ?? "";
+        
         var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
         if (Guid.TryParse(branchClaim, out var bid))
             userBranchId = bid;
+            
+        var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
+        if (Guid.TryParse(merchantClaim, out var mid))
+            userMerchantId = mid;
+
+        await LoadAvailableBranches();
 
         if (CategoryIdQuery.HasValue)
         {
             selectedCategoryId = CategoryIdQuery.Value;
         }
         await Task.WhenAll(LoadData(), LoadCategories(), LoadMerchants());
+    }
+
+    private async Task HandleLowStockChange(ChangeEventArgs e)
+    {
+        lowStockOnly = (bool)(e.Value ?? false);
+        currentPage = 1;
+        await LoadData();
     }
 
     private async Task HandleCategoryChange(ChangeEventArgs e)
@@ -525,6 +572,36 @@
         currentPage = 1;
         await LoadData();
     }
+
+    private async Task HandleBranchChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (Guid.TryParse(value, out var guid))
+            selectedBranchId = guid;
+        else
+            selectedBranchId = null;
+
+        currentPage = 1;
+        await LoadData();
+    }
+
+    private async Task LoadAvailableBranches()
+    {
+        if (userRole == "Admin")
+        {
+            var response = await BranchService.GetAllBranchesAsync(new PaginationFilter { PageSize = 100 });
+            if (response?.IsSuccess == true && response.Data?.Data != null) 
+                availableBranches = response.Data.Data.ToList();
+        }
+        else if (userRole == "MerchantAdmin" && userMerchantId.HasValue)
+        {
+            var response = await BranchService.GetBranchesByMerchantIdAsync(userMerchantId.Value, new PaginationFilter { PageSize = 100 });
+            if (response?.IsSuccess == true && response.Data?.Data != null) 
+                availableBranches = response.Data.Data.ToList();
+        }
+    }
+
+    [Inject] private POS.Frontend.Services.Merchants.IBranchService BranchService { get; set; } = null!;
 
     private async Task LoadMerchants()
     {
@@ -579,7 +656,10 @@
                 PageNumber = currentPage, 
                 PageSize = pageSize,
                 SearchTerm = searchTerm,
-                CategoryId = selectedCategoryId
+                CategoryId = selectedCategoryId,
+                BranchId = selectedBranchId,
+                LowStockOnly = lowStockOnly,
+                LowStockThreshold = 5 // Could be a setting
             };
             var response = await ProductService.GetProductsAsync(filter);
             if (response?.Data != null)

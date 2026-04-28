@@ -15,4 +15,5 @@ public class ProductsResponseDto
     public string MerchantName { get; set; } = string.Empty;
     public Guid CategoryId { get; set; }
     public Guid MerchantId { get; set; }
+    public int StockQuantity { get; set; }
 }

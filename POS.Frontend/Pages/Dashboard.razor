@@ -14,8 +14,9 @@
 @using POS.Frontend.Services.Merchants
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IBranchService BranchService
+@inject ICategoryService CategoryService
 
-<div class="space-y-6">
+<div class="space-y-4">
 
     @if (_isLoading)
     {
@@ -75,24 +76,24 @@
             </div>
 
             <!-- Total Sales -->
-            <div class="kpi-card">
+            <a href="sales" class="kpi-card hover:border-accent/50 transition-colors group">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-xs font-medium text-muted">Total Sales</span>
-                    <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                     </div>
                 </div>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">@_totalSalesCount</p>
-                <p class="text-xs text-muted font-medium mt-1">Across all branches</p>
-            </div>
+                <p class="text-xs text-muted font-medium mt-1">Across @(SelectedBranchId.HasValue ? "selected branch" : "all branches")</p>
+            </a>
 
             <!-- Customers -->
-            <div class="kpi-card">
+            <a href="customers" class="kpi-card hover:border-blue-500/50 transition-colors group">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-xs font-medium text-muted">Customers</span>
-                    <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/20 flex items-center justify-center">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <svg class="w-4 h-4 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
@@ -100,13 +101,13 @@
                 </div>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">@_customerCount</p>
                 <p class="text-xs text-muted font-medium mt-1">Registered customers</p>
-            </div>
+            </a>
 
             <!-- Products -->
-            <div class="kpi-card">
+            <a href="products" class="kpi-card hover:border-amber-500/50 transition-colors group">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-xs font-medium text-muted">Products</span>
-                    <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/20 flex items-center justify-center">
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <svg class="w-4 h-4 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
@@ -114,15 +115,15 @@
                 </div>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">@_productCount</p>
                 <p class="text-xs text-muted font-medium mt-1">Active in catalog</p>
-            </div>
+            </a>
 
         </div>
 
         <!-- Chart + Top Products -->
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
 
             <!-- Revenue by month (derived from orders) -->
-            <div class="card xl:col-span-2">
+            <div class="card lg:col-span-2">
                 <div class="card-header flex items-center justify-between">
                     <div>
                         <p class="text-sm font-semibold text-gray-900 dark:text-white">Revenue Overview</p>
@@ -152,25 +153,62 @@
             </div>
 
             <!-- Top products (by revenue from orders) -->
-            <div class="card">
-                <div class="card-header">
-                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Top Products</p>
-                    <span class="badge badge-info">All time</span>
+            <div class="card lg:col-span-2">
+                <div class="card-header flex flex-col gap-2 py-2 px-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">Top Products</p>
+                            <p class="text-[10px] text-muted mt-0.5">By revenue</p>
+                        </div>
+                        <a href="reports/top-products" class="text-[10px] uppercase tracking-wider font-bold text-accent hover:text-accent-dark transition-colors px-2 py-1 rounded bg-accent/5">Full Report</a>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2">
+                        <select class="text-[10px] py-1 pl-2 pr-6 border-border/50 bg-transparent rounded-md focus:ring-accent/20 min-w-[90px]" 
+                                value="@_topTimeRange" @onchange="OnTopTimeRangeChanged">
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                        </select>
+                        
+                        <select class="text-[10px] py-1 pl-2 pr-6 border-border/50 bg-transparent rounded-md focus:ring-accent/20 min-w-[90px]"
+                                value="@_selectedTopCategory" @onchange="OnTopCategoryChanged">
+                            <option value="">All Categories</option>
+                            @foreach (var cat in _categories)
+                            {
+                                <option value="@cat.Name">@cat.Name</option>
+                            }
+                        </select>
+                    </div>
                 </div>
                 @if (_topProducts.Any())
                 {
                     <div class="divide-y divide-border/60">
-                        @foreach (var p in _topProducts)
+                        @for (int i = 0; i < _topProducts.Count; i++)
                         {
-                            <div class="flex items-center gap-3 px-5 py-3">
-                                <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-surface flex items-center justify-center shrink-0 text-sm border border-transparent dark:border-border">
-                                    📦
+                            var p = _topProducts[i];
+                            var rank = i + 1;
+                            <div class="flex items-center gap-3 px-4 py-2.5 relative group hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                <div class="relative shrink-0">
+                                    <div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-surface flex items-center justify-center text-lg border border-transparent dark:border-border group-hover:border-accent/20 transition-colors">
+                                        @GetProductIcon(p.CategoryName)
+                                    </div>
+                                    <!-- Rank Badge -->
+                                    <div class="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm z-10 border-2 border-white dark:border-surface
+                                                @(rank == 1 ? "bg-amber-400 text-white" : rank == 2 ? "bg-slate-300 text-white" : rank == 3 ? "bg-orange-400 text-white" : "bg-gray-100 text-gray-500 dark:bg-border/30")">
+                                        @rank
+                                    </div>
                                 </div>
+                                
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">@p.Name</p>
-                                    <p class="text-xs text-muted">@p.Units units sold</p>
+                                    <p class="text-xs font-bold text-gray-900 dark:text-white truncate">@p.Name</p>
+                                    <p class="text-[10px] text-muted">@p.Units sold</p>
                                 </div>
-                                <p class="text-xs font-semibold text-gray-900 dark:text-white">@p.Revenue.ToString("N0") MMK</p>
+                                <div class="text-right">
+                                    <p class="text-xs font-bold text-gray-900 dark:text-white">@p.Revenue.ToString("N0")</p>
+                                    <p class="text-[9px] text-muted font-medium uppercase tracking-tight">MMK</p>
+                                </div>
                             </div>
                         }
                     </div>
@@ -263,7 +301,12 @@
     private List<ChartBarData>     _chartBars    = new();
     private bool                   _isWeeklyView = false;
 
-    private record TopProductRow(string Name, int Units, decimal Revenue);
+    // Filters
+    private List<CategoryResponseDto> _categories = new();
+    private string? _selectedTopCategory = null;
+    private string _topTimeRange = "all";
+
+    private record TopProductRow(string Name, int Units, decimal Revenue, string CategoryName);
     private record ChartBarData(string Label, int Height, decimal Revenue, bool Active);
 
     // ── Load ───────────────────────────────────────────────────────────
@@ -279,6 +322,15 @@
 
             var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
             if (Guid.TryParse(merchantClaim, out var mId)) CallerMerchantId = mId;
+
+            var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
+            if (Guid.TryParse(branchClaim, out var bId)) 
+            {
+                if (CallerRole == "Staff")
+                {
+                    SelectedBranchId = bId;
+                }
+            }
 
             if (CallerRole == "MerchantAdmin" && CallerMerchantId.HasValue)
             {
@@ -297,7 +349,7 @@
                 }
             }
 
-            await Task.WhenAll(LoadSalesData(), LoadProductCount(), LoadCustomerCount());
+            await Task.WhenAll(LoadSalesData(), LoadProductCount(), LoadCustomerCount(), LoadCategories());
         }
         catch (Exception ex)
         {
@@ -338,20 +390,68 @@
         _totalRevenue    = orders.Sum(o => o.TotalAmount);
         _recentOrders    = orders.OrderByDescending(o => o.OrderDate).Take(5).ToList();
 
-        // Top products by revenue
-        _topProducts = orders
+        // Get product info for categories
+        var prodResponse = await ProductService.GetProductsAsync(new PaginationFilter { PageSize = 1000 });
+        _productsDict = prodResponse?.Data?.Data?.ToDictionary(p => p.Name, p => p) ?? new();
+
+        RefreshChart();
+        RefreshTopProducts();
+    }
+
+    private async Task LoadCategories()
+    {
+        var response = await CategoryService.GetCategoriesAsync(new PaginationFilter { PageSize = 100 });
+        if (response?.IsSuccess == true && response.Data?.Data != null)
+        {
+            _categories = response.Data.Data.ToList();
+        }
+    }
+
+    private void OnTopTimeRangeChanged(ChangeEventArgs e)
+    {
+        _topTimeRange = e.Value?.ToString() ?? "all";
+        RefreshTopProducts();
+    }
+
+    private void OnTopCategoryChanged(ChangeEventArgs e)
+    {
+        _selectedTopCategory = e.Value?.ToString();
+        if (string.IsNullOrEmpty(_selectedTopCategory)) _selectedTopCategory = null;
+        RefreshTopProducts();
+    }
+
+    private void RefreshTopProducts()
+    {
+        var now = DateTime.Now;
+        var filteredOrders = _allOrders.AsEnumerable();
+
+        // Apply time filter
+        if (_topTimeRange == "today")
+            filteredOrders = filteredOrders.Where(o => o.OrderDate.Date == now.Date);
+        else if (_topTimeRange == "week")
+            filteredOrders = filteredOrders.Where(o => o.OrderDate >= now.AddDays(-7));
+        else if (_topTimeRange == "month")
+            filteredOrders = filteredOrders.Where(o => o.OrderDate >= now.AddDays(-30));
+
+        _topProducts = filteredOrders
             .SelectMany(o => o.Items)
             .GroupBy(i => i.ProductName)
-            .Select(g => new TopProductRow(
-                g.Key,
-                g.Sum(i => i.Quantity),
-                g.Sum(i => i.SubTotal)))
+            .Select(g => 
+            {
+                _productsDict.TryGetValue(g.Key, out var pInfo);
+                return new TopProductRow(
+                    g.Key,
+                    g.Sum(i => i.Quantity),
+                    g.Sum(i => i.SubTotal),
+                    pInfo?.CategoryName ?? "General");
+            })
+            .Where(p => _selectedTopCategory == null || p.CategoryName == _selectedTopCategory)
             .OrderByDescending(p => p.Revenue)
             .Take(5)
             .ToList();
-
-        RefreshChart();
     }
+
+    private Dictionary<string, ProductsResponseDto> _productsDict = new();
 
     private void ToggleChartView(bool isWeekly)
     {
@@ -432,5 +532,24 @@
         var customerResponse = await CustomerService.GetCustomersAsync(
             firstMerchant.Id, new PaginationFilter { PageNumber = 1, PageSize = 1 });
         _customerCount = (int)(customerResponse?.Data?.TotalRecords ?? 0);
+    }
+
+    private string GetProductIcon(string category)
+    {
+        return category.ToLower() switch
+        {
+            "laptop" => "💻",
+            "smartphone" or "mobile" => "📱",
+            "monitor" => "🖥️",
+            "storage" => "💾",
+            "keyboard" => "⌨️",
+            "mouse" => "🖱️",
+            "headphone" or "audio" => "🎧",
+            "gaming" => "🎮",
+            "router" or "networking" => "🌐",
+            "battery" or "charger" => "🔋",
+            "speaker" => "🔊",
+            _ => "📦"
+        };
     }
 }

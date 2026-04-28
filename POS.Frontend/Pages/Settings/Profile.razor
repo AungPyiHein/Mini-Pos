@@ -326,7 +326,7 @@
     {
         try
         {
-            var response = await UserService.GetUserByIdAsync(currentUserId.Value);
+            var response = await UserService.GetUserByIdAsync(currentUserId ?? Guid.Empty);
             if (response.IsSuccess && response.Data != null)
             {
                 email = response.Data.Email;
@@ -349,7 +349,7 @@
         {
             var filter = new PaginationFilter 
             { 
-                ProcessedById = currentUserId.Value,
+                ProcessedById = currentUserId ?? Guid.Empty,
                 PageSize = 5
             };
             
@@ -444,7 +444,7 @@
         try
         {
             var request = new UpdateUserRequest { PlainPassword = newPassword };
-            var response = await UserService.UpdateUserAsync(currentUserId.Value, request);
+            var response = await UserService.UpdateUserAsync(currentUserId ?? Guid.Empty, request);
             if (response.IsSuccess)
             {
                 passwordMessage = "Password updated successfully!";

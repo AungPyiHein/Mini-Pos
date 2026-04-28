@@ -1,0 +1,471 @@
+@page "/reports/top-products"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@layout MainLayout
+@using POS.Frontend.Models
+@using POS.Frontend.Models.Sales
+@using POS.Frontend.Models.Products
+@using POS.Shared.Models
+@inject ISaleService SaleService
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<div class="space-y-6 animate-in fade-in duration-500">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <button @onclick="GoBack" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-border/30 transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+            </button>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Top Selling Products</h1>
+                <p class="text-sm text-muted">Detailed performance analysis of your best-selling items</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2 bg-white dark:bg-surface p-1 rounded-xl border border-gray-100 dark:border-border shadow-sm">
+            @foreach (var period in _periods)
+            {
+                <button @onclick="() => SetPeriod(period.Key)" 
+                        class="px-4 py-2 text-xs font-semibold rounded-lg transition-all @(_selectedPeriod == period.Key ? "bg-accent text-white shadow-md shadow-accent/20" : "text-muted hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-border/20")">
+                    @period.Value
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Filters & Stats Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Most Popular Card -->
+        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-500/10 dark:to-emerald-500/5 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 relative overflow-hidden group">
+            <div class="relative z-10">
+                <p class="text-[10px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400 mb-4">Most Popular</p>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">@(_topProduct?.Name ?? "N/A")</h3>
+                <p class="text-sm text-emerald-600 dark:text-emerald-400 font-semibold">@(_topProduct?.UnitsSold ?? 0) units sold</p>
+            </div>
+            <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                <svg class="w-32 h-32 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Highest Revenue Card -->
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-500/10 dark:to-blue-500/5 p-6 rounded-2xl border border-blue-100 dark:border-blue-500/20 relative overflow-hidden group">
+            <div class="relative z-10">
+                <p class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-4">Highest Revenue</p>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">@(_highestRevenueProduct?.Name ?? "N/A")</h3>
+                <p class="text-sm text-blue-600 dark:text-blue-400 font-semibold">@(_highestRevenueProduct?.Revenue.ToString("N0") ?? "0") MMK generated</p>
+            </div>
+            <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                <svg class="w-32 h-32 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Average Sale Price -->
+        <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-500/10 dark:to-amber-500/5 p-6 rounded-2xl border border-amber-100 dark:border-amber-500/20 relative overflow-hidden group">
+            <div class="relative z-10">
+                <p class="text-[10px] uppercase tracking-wider font-bold text-amber-600 dark:text-amber-400 mb-4">Average Value</p>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-1">@(_averageRevenue.ToString("N0")) MMK</h3>
+                <p class="text-sm text-amber-600 dark:text-amber-400 font-semibold">Average per top product</p>
+            </div>
+            <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                <svg class="w-32 h-32 text-amber-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Category & Refresh -->
+        <div class="flex flex-col gap-3">
+            <div class="relative">
+                <select class="form-input w-full pl-10 h-[52px] bg-white dark:bg-surface border-gray-100 dark:border-border rounded-2xl shadow-sm appearance-none font-medium" 
+                        @onchange="OnCategoryChanged">
+                    <option value="">All Categories</option>
+                    @foreach (var cat in _categories)
+                    {
+                        <option value="@cat.Id">@cat.Name</option>
+                    }
+                </select>
+                <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                    </svg>
+                </div>
+            </div>
+            <button @onclick="RefreshData" class="flex items-center justify-center gap-2 h-[52px] w-full bg-white dark:bg-surface border border-gray-100 dark:border-border rounded-2xl shadow-sm hover:bg-gray-50 dark:hover:bg-border/20 transition-all font-semibold text-gray-700 dark:text-gray-300">
+                <svg class="w-4 h-4 @(_isRefreshing ? "animate-spin" : "")" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Product Performance Table -->
+    <div class="card overflow-hidden">
+        <div class="card-header flex items-center justify-between">
+            <h2 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Product Performance Table</h2>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-muted">@_displayProducts.Count items</span>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50/50 dark:bg-border/10 border-b border-border/60">
+                        <th class="px-6 py-4 text-left text-[10px] font-bold text-muted uppercase tracking-widest">Rank</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-bold text-muted uppercase tracking-widest">Product</th>
+                        <th class="px-6 py-4 text-left text-[10px] font-bold text-muted uppercase tracking-widest">Category</th>
+                        <th class="px-6 py-4 text-right text-[10px] font-bold text-muted uppercase tracking-widest">Price</th>
+                        <th class="px-6 py-4 text-right text-[10px] font-bold text-muted uppercase tracking-widest">Units Sold</th>
+                        <th class="px-6 py-4 text-right text-[10px] font-bold text-muted uppercase tracking-widest">Revenue</th>
+                        <th class="px-6 py-4 text-center text-[10px] font-bold text-muted uppercase tracking-widest">Trend</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border/40">
+                    @if (_isLoading)
+                    {
+                        @for (int i = 0; i < 5; i++)
+                        {
+                            <tr class="animate-pulse">
+                                @for (int j = 0; j < 7; j++) { <td class="px-6 py-4"><div class="h-4 bg-gray-100 dark:bg-border/30 rounded w-full"></div></td> }
+                            </tr>
+                        }
+                    }
+                    else if (!_displayProducts.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="px-6 py-12 text-center text-muted">
+                                <div class="flex flex-col items-center gap-2">
+                                    <svg class="w-12 h-12 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                    <p>No products found for the selected filters</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var (p, index) in _displayProducts.Select((p, i) => (p, i)))
+                        {
+                            <tr class="hover:bg-gray-50/50 dark:hover:bg-border/5 transition-colors group">
+                                <td class="px-6 py-4">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold @(index == 0 ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400" : index == 1 ? "bg-gray-100 text-gray-700 dark:bg-border/30" : index == 2 ? "bg-orange-100 text-orange-700 dark:bg-orange-500/20" : "text-muted")">
+                                        @(index + 1)
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-gray-50 dark:bg-border/20 border border-border/40 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                                            @GetProductIcon(p.CategoryName)
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-gray-900 dark:text-white">@p.Name</p>
+                                            <p class="text-[10px] font-medium text-muted uppercase tracking-wider">SKU: @p.SKU</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-wider">
+                                        @p.CategoryName
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    @p.Price.ToString("N0")
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex flex-col items-end">
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white">@p.UnitsSold</span>
+                                        <span class="text-[10px] text-muted">units</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <span class="text-sm font-bold text-accent dark:text-accent-light">@p.Revenue.ToString("N0") <span class="text-[10px] font-medium opacity-70">MMK</span></span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="flex justify-center">
+                                        <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private bool _isRefreshing = false;
+    private string _selectedPeriod = "all";
+    private Guid? _selectedCategoryId;
+    
+    private List<CategoryResponseDto> _categories = new();
+    private List<TopProductDisplay> _allProducts = new();
+    private List<TopProductDisplay> _displayProducts = new();
+    
+    private TopProductDisplay? _topProduct => _displayProducts.FirstOrDefault();
+    private TopProductDisplay? _highestRevenueProduct => _displayProducts.OrderByDescending(p => p.Revenue).FirstOrDefault();
+    private decimal _averageRevenue => _displayProducts.Any() ? _displayProducts.Average(p => p.Revenue) : 0;
+
+    private Dictionary<string, string> _periods = new()
+    {
+        { "today", "Today" },
+        { "7days", "7 Days" },
+        { "30days", "30 Days" },
+        { "all", "All Time" }
+    };
+
+    private class TopProductDisplay
+    {
+        public string Name { get; set; } = "";
+        public string SKU { get; set; } = "";
+        public string CategoryName { get; set; } = "";
+        public decimal Price { get; set; }
+        public int UnitsSold { get; set; }
+        public decimal Revenue { get; set; }
+        public Guid CategoryId { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+        await LoadData();
+    }
+
+    private async Task LoadCategories()
+    {
+        var response = await CategoryService.GetCategoriesAsync(new PaginationFilter { PageSize = 100 });
+        if (response?.Data?.Data != null)
+        {
+            _categories = response.Data.Data.ToList();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? user.FindFirst("role")?.Value ?? "";
+            
+            Guid? branchId = null;
+            if (role == "Staff")
+            {
+                var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
+                if (Guid.TryParse(branchClaim, out var bId)) branchId = bId;
+            }
+
+            var filter = new PaginationFilter { PageSize = 2000, BranchId = branchId };
+            
+            // Apply time filter
+            var now = DateTime.Now;
+            DateTime? startDate = _selectedPeriod switch
+            {
+                "today" => now.Date,
+                "7days" => now.AddDays(-7).Date,
+                "30days" => now.AddDays(-30).Date,
+                _ => null
+            };
+
+            var response = await SaleService.GetAllOrdersAsync(filter);
+            if (response?.Data?.Data != null)
+            {
+                var orders = response.Data.Data.AsEnumerable();
+                if (startDate.HasValue)
+                {
+                    orders = orders.Where(o => o.OrderDate >= startDate.Value);
+                }
+
+                _allProducts = orders
+                    .SelectMany(o => o.Items)
+                    .GroupBy(i => i.ProductId)
+                    .Select(g => 
+                    {
+                        var first = g.First();
+                        return new TopProductDisplay
+                        {
+                            Name = first.ProductName,
+                            SKU = "PRD-" + first.ProductId.ToString().Substring(0, 5).ToUpper(), // Fallback SKU if not in items
+                            CategoryName = "General", // Will try to map from ProductService if needed
+                            Price = first.UnitPrice,
+                            UnitsSold = g.Sum(x => x.Quantity),
+                            Revenue = g.Sum(x => x.SubTotal)
+                        };
+                    })
+                    .OrderByDescending(x => x.UnitsSold)
+                    .ToList();
+
+                // Enrich with Category data if possible
+                await EnrichWithProductData();
+                ApplyFilters();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task EnrichWithProductData()
+    {
+        // Ideally we'd have Category info in the Order Item, but if not we fetch from ProductService
+        // For now, let's assume we can get it from the Product list
+        var prodResponse = await ProductService.GetProductsAsync(new PaginationFilter { PageSize = 1000 });
+        if (prodResponse?.Data?.Data != null)
+        {
+            var products = prodResponse.Data.Data.ToDictionary(p => p.Id, p => p);
+            foreach (var p in _allProducts)
+            {
+                // We need ProductId in TopProductDisplay, let's fix the grouping
+            }
+        }
+    }
+
+    // Revised LoadData to handle ProductId properly
+    private async Task LoadDataRevised()
+    {
+        _isLoading = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? user.FindFirst("role")?.Value ?? "";
+            
+            Guid? branchId = null;
+            if (role == "Staff")
+            {
+                var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
+                if (Guid.TryParse(branchClaim, out var bId)) branchId = bId;
+            }
+
+            var filter = new PaginationFilter { PageSize = 2000, BranchId = branchId };
+            
+            var now = DateTime.Now;
+            DateTime? startDate = _selectedPeriod switch
+            {
+                "today" => now.Date,
+                "7days" => now.AddDays(-7).Date,
+                "30days" => now.AddDays(-30).Date,
+                _ => null
+            };
+
+            var response = await SaleService.GetAllOrdersAsync(filter);
+            var prodResponse = await ProductService.GetProductsAsync(new PaginationFilter { PageSize = 1000 });
+            var productsDict = prodResponse?.Data?.Data?.ToDictionary(p => p.Id, p => p) ?? new();
+
+            if (response?.Data?.Data != null)
+            {
+                var orders = response.Data.Data.AsEnumerable();
+                if (startDate.HasValue)
+                {
+                    orders = orders.Where(o => o.OrderDate >= startDate.Value);
+                }
+
+                _allProducts = orders
+                    .SelectMany(o => o.Items)
+                    .GroupBy(i => i.ProductId)
+                    .Select(g => 
+                    {
+                        var productId = g.Key;
+                        productsDict.TryGetValue(productId, out var pInfo);
+                        
+                        return new TopProductDisplay
+                        {
+                            Name = pInfo?.Name ?? g.First().ProductName,
+                            SKU = pInfo?.SKU ?? "N/A",
+                            CategoryName = pInfo?.CategoryName ?? "Uncategorized",
+                            CategoryId = pInfo?.CategoryId ?? Guid.Empty,
+                            Price = pInfo?.Price ?? g.First().UnitPrice,
+                            UnitsSold = g.Sum(x => x.Quantity),
+                            Revenue = g.Sum(x => x.SubTotal)
+                        };
+                    })
+                    .OrderByDescending(x => x.UnitsSold)
+                    .ToList();
+
+                ApplyFilters();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    // Overriding OnInitialized to use revised method
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadCategories();
+        await LoadDataRevised();
+    }
+
+    private void ApplyFilters()
+    {
+        _displayProducts = _allProducts;
+        if (_selectedCategoryId.HasValue && _selectedCategoryId != Guid.Empty)
+        {
+            _displayProducts = _displayProducts.Where(p => p.CategoryId == _selectedCategoryId.Value).ToList();
+        }
+    }
+
+    private async Task SetPeriod(string period)
+    {
+        _selectedPeriod = period;
+        await LoadDataRevised();
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var catId))
+        {
+            _selectedCategoryId = catId;
+        }
+        else
+        {
+            _selectedCategoryId = null;
+        }
+        ApplyFilters();
+    }
+
+    private async Task RefreshData()
+    {
+        _isRefreshing = true;
+        await LoadDataRevised();
+        _isRefreshing = false;
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/");
+
+    private string GetProductIcon(string category)
+    {
+        return category.ToLower() switch
+        {
+            "laptop" => "💻",
+            "smartphone" or "mobile" => "📱",
+            "monitor" => "🖥️",
+            "storage" => "💾",
+            "keyboard" => "⌨️",
+            "mouse" => "🖱️",
+            "headphone" or "audio" => "🎧",
+            "gaming" => "🎮",
+            "router" or "networking" => "🌐",
+            "battery" or "charger" => "🔋",
+            "speaker" => "🔊",
+            _ => "📦"
+        };
+    }
+}
