@@ -259,6 +259,11 @@ namespace POS.Backend.Features.Sales
             {
                 query = query.Where(o => o.BranchId == filter.BranchId.Value);
             }
+            
+            if (filter.MerchantId.HasValue && _currentUser.Role == POS.Shared.Models.UserRole.Admin)
+            {
+                query = query.Where(o => o.Branch != null && o.Branch.MerchantId == filter.MerchantId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {

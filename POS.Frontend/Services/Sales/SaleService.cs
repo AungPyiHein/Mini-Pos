@@ -30,6 +30,10 @@ public class SaleService : ISaleService
             {
                 url += $"&branchId={filter.BranchId.Value}";
             }
+            if (filter.MerchantId.HasValue)
+            {
+                url += $"&merchantId={filter.MerchantId.Value}";
+            }
             if (filter.ProcessedById.HasValue)
             {
                 url += $"&processedById={filter.ProcessedById.Value}";

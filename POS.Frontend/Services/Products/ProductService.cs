@@ -36,6 +36,16 @@ public class ProductService : IProductService
             url += $"&categoryId={filter.CategoryId}";
         }
 
+        if (filter.BranchId.HasValue)
+        {
+            url += $"&branchId={filter.BranchId.Value}";
+        }
+
+        if (filter.LowStockOnly)
+        {
+            url += $"&lowStockOnly=true&lowStockThreshold={filter.LowStockThreshold}";
+        }
+
         try
         {
             var response = await _http.GetFromJsonAsync<ApiResponse<PagedResponse<ProductsResponseDto>>>(url);

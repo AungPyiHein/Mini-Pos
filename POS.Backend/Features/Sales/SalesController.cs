@@ -1,12 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using POS.Backend.Features.Sales;
+using POS.Backend.Common;
+using POS.Shared.Models;
 
 namespace POS.Backend.Features.Sales
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Policy = "AllStaff")]
+    [RequireRole(UserRole.Admin, UserRole.MerchantAdmin, UserRole.Staff)]
     public class SalesController : ControllerBase
     {
         private readonly ISalesServices _salesServices;

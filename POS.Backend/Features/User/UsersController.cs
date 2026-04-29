@@ -1,10 +1,11 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using POS.Backend.Features.User;
+using POS.Backend.Common;
+using POS.Shared.Models;
 
 namespace POS.Backend.Features.User
 {
-    [Authorize(Policy = "AllStaff")]
+    [RequireRole(UserRole.Admin, UserRole.MerchantAdmin, UserRole.Staff)]
     [ApiController]
     [Route("api/[controller]")]
     public class UsersController : ControllerBase

@@ -2,7 +2,7 @@ namespace POS.Shared.Models
 {
     public class PaginationFilter
     {
-        private const int MaxPageSize = 100;
+        private const int MaxPageSize = 10000;
         private int _pageSize = 10;
         private int _pageNumber = 1;
 
@@ -21,6 +21,7 @@ namespace POS.Shared.Models
         public string? SearchTerm { get; set; }
         public Guid? CategoryId { get; set; }
         public Guid? BranchId { get; set; }
+        public Guid? MerchantId { get; set; }
         public Guid? ProcessedById { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
 using POS.Backend.Features.Category;
 using POS.Backend.Features.Products;
 using POS.Backend.Features.Merchants;
@@ -48,16 +47,10 @@ builder.Services.AddHttpClient<ILoyaltyServices, LoyaltyServices>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<IAuthorizationHandler, RoleHandler>();
+builder.Services.AddScoped<RbacFilter>();
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("Admin", policy => policy.Requirements.Add(new RoleRequirement(POS.Shared.Models.UserRole.Admin)));
-    options.AddPolicy("MerchantAdmin", policy => policy.Requirements.Add(new RoleRequirement(POS.Shared.Models.UserRole.MerchantAdmin)));
-    options.AddPolicy("Staff", policy => policy.Requirements.Add(new RoleRequirement(POS.Shared.Models.UserRole.Staff)));
-    options.AddPolicy("Management", policy => policy.Requirements.Add(new RoleRequirement(POS.Shared.Models.UserRole.Admin, POS.Shared.Models.UserRole.MerchantAdmin)));
-    options.AddPolicy("AllStaff", policy => policy.Requirements.Add(new RoleRequirement(POS.Shared.Models.UserRole.Admin, POS.Shared.Models.UserRole.MerchantAdmin, POS.Shared.Models.UserRole.Staff)));
-});
+// Simple authorization — JWT validity only. RBAC is enforced by RbacFilter (ActionFilter).
+builder.Services.AddAuthorization();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -86,7 +79,11 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddControllers(mvc =>
+{
+    // Register RbacFilter globally so it runs on every action.
+    mvc.Filters.AddService<RbacFilter>();
+}).AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
 });

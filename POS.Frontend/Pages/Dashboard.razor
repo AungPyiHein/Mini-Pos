@@ -34,7 +34,33 @@
     }
     else
     {
-        @if (_availableBranches.Any())
+        @if (CallerRole == "Admin")
+        {
+            if (_availableMerchants.Any())
+            {
+                <div class="flex justify-between items-center bg-white dark:bg-surface p-4 rounded-xl border border-gray-100 dark:border-border shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Merchant Overview</h2>
+                            <p class="text-sm text-muted">Select a merchant to view its specific sales data</p>
+                        </div>
+                    </div>
+                    <select class="form-input w-64 shadow-sm font-medium" value="@SelectedMerchantId" @onchange="OnMerchantChanged">
+                        <option value="">All Merchants</option>
+                        @foreach (var merchant in _availableMerchants)
+                        {
+                            <option value="@merchant.Id">@merchant.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+        }
+        else if (_availableBranches.Any())
         {
             <div class="flex justify-between items-center bg-white dark:bg-surface p-4 rounded-xl border border-gray-100 dark:border-border shadow-sm">
                 <div class="flex items-center gap-3">
@@ -86,7 +112,7 @@
                     </div>
                 </div>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">@_totalSalesCount</p>
-                <p class="text-xs text-muted font-medium mt-1">Across @(SelectedBranchId.HasValue ? "selected branch" : "all branches")</p>
+                <p class="text-xs text-muted font-medium mt-1">Across @(SelectedMerchantId.HasValue ? "selected merchant" : (SelectedBranchId.HasValue ? "selected branch" : "all locations"))</p>
             </a>
 
             <!-- Customers -->
@@ -192,7 +218,7 @@
                             <div class="flex items-center gap-3 px-4 py-2.5 relative group hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
                                 <div class="relative shrink-0">
                                     <div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-surface flex items-center justify-center text-lg border border-transparent dark:border-border group-hover:border-accent/20 transition-colors">
-                                        @GetProductIcon(p.CategoryName)
+                                        @POS.Frontend.Shared.CategoryIconHelper.GetIcon(p.CategoryName)
                                     </div>
                                     <!-- Rank Badge -->
                                     <div class="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm z-10 border-2 border-white dark:border-surface
@@ -282,9 +308,11 @@
     private bool _isLoading = true;
     private string _errorMessage = string.Empty;
 
-    // Branches
+    // Branches & Merchants
     private List<BranchResponseDto> _availableBranches = new();
+    private List<MerchantResponseDto> _availableMerchants = new();
     private Guid? SelectedBranchId;
+    private Guid? SelectedMerchantId;
     private string CallerRole = "";
     private Guid? CallerMerchantId;
 
@@ -342,10 +370,10 @@
             }
             else if (CallerRole == "Admin")
             {
-                var branchResponse = await BranchService.GetAllBranchesAsync(new PaginationFilter { PageSize = 100 });
-                if (branchResponse?.Data?.Data != null)
+                var merchantResponse = await MerchantService.GetAllMerchantsAsync(new PaginationFilter { PageSize = 100 });
+                if (merchantResponse?.Data?.Data != null)
                 {
-                    _availableBranches = branchResponse.Data.Data.ToList();
+                    _availableMerchants = merchantResponse.Data.Data.ToList();
                 }
             }
 
@@ -377,9 +405,25 @@
         _isLoading = false;
     }
 
+    private async Task OnMerchantChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var merchantId))
+        {
+            SelectedMerchantId = merchantId;
+        }
+        else
+        {
+            SelectedMerchantId = null;
+        }
+        
+        _isLoading = true;
+        await LoadSalesData();
+        _isLoading = false;
+    }
+
     private async Task LoadSalesData()
     {
-        var filter = new PaginationFilter { PageSize = 1000, BranchId = SelectedBranchId };
+        var filter = new PaginationFilter { PageSize = 1000, BranchId = SelectedBranchId, MerchantId = SelectedMerchantId };
         var response = await SaleService.GetAllOrdersAsync(filter);
         if (response?.Data?.Data == null) return;
         
@@ -392,7 +436,9 @@
 
         // Get product info for categories
         var prodResponse = await ProductService.GetProductsAsync(new PaginationFilter { PageSize = 1000 });
-        _productsDict = prodResponse?.Data?.Data?.ToDictionary(p => p.Name, p => p) ?? new();
+        _productsDict = prodResponse?.Data?.Data?
+            .GroupBy(p => p.Name)
+            .ToDictionary(g => g.Key, g => g.First()) ?? new();
 
         RefreshChart();
         RefreshTopProducts();
@@ -529,22 +575,5 @@
         _customerCount = (int)(response?.Data?.TotalRecords ?? 0);
     }
 
-    private string GetProductIcon(string category)
-    {
-        return category.ToLower() switch
-        {
-            "laptop" => "💻",
-            "smartphone" or "mobile" => "📱",
-            "monitor" => "🖥️",
-            "storage" => "💾",
-            "keyboard" => "⌨️",
-            "mouse" => "🖱️",
-            "headphone" or "audio" => "🎧",
-            "gaming" => "🎮",
-            "router" or "networking" => "🌐",
-            "battery" or "charger" => "🔋",
-            "speaker" => "🔊",
-            _ => "📦"
-        };
-    }
+
 }

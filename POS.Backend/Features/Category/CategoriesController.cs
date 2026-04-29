@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using POS.Backend.Features.Category;
 using POS.Backend.Common;
+using POS.Shared.Models;
 
 namespace POS.Backend.Features.Category
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class CategoriesController : ControllerBase
@@ -30,14 +30,14 @@ namespace POS.Backend.Features.Category
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Category retrieved successfully", Data = result.Value }) : NotFound(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPost]
-        [Authorize(Policy = "Management")]
+        [RequireRole(UserRole.Admin, UserRole.MerchantAdmin)]
         public async Task<IActionResult> CreateCategory(CreateCategoryRequest request)
         {
             var result = await _categoryServices.CreateCategoryAsync(request);
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Category Created", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPut("{id}")]
-        [Authorize(Policy = "Management")]
+        [RequireRole(UserRole.Admin, UserRole.MerchantAdmin)]
         public async Task<IActionResult> UpdateCategory(Guid id, UpdateCategoryRequest request)
         {
             if (id != request.Id)
@@ -46,7 +46,7 @@ namespace POS.Backend.Features.Category
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Category Updated" }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpDelete("{id}")]
-        [Authorize(Policy = "Management")]
+        [RequireRole(UserRole.Admin, UserRole.MerchantAdmin)]
         public async Task<IActionResult> DeleteCategory(Guid id)
         {
             var result = await _categoryServices.DeleteCategoryAsync(id);

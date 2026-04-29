@@ -539,7 +539,12 @@
         
         var branchClaim = user.FindFirst("BranchId")?.Value ?? user.FindFirst("branchId")?.Value;
         if (Guid.TryParse(branchClaim, out var bid))
+        {
             userBranchId = bid;
+            // Staff see their branch's stock by default
+            if (userRole == "Staff")
+                selectedBranchId = bid;
+        }
             
         var merchantClaim = user.FindFirst("MerchantId")?.Value ?? user.FindFirst("merchantId")?.Value;
         if (Guid.TryParse(merchantClaim, out var mid))
@@ -693,7 +698,18 @@
             var response = await InventoryService.GetProductInventoryAsync(product.Id);
             if (response.IsSuccess && response.Data != null)
             {
-                selectedProductInventory = response.Data.OrderBy(i => i.BranchName).ToList();
+                // For Staff: put their branch first, then sort the rest
+                if (userRole == "Staff" && userBranchId.HasValue)
+                {
+                    selectedProductInventory = response.Data
+                        .OrderByDescending(i => i.BranchId == userBranchId.Value)
+                        .ThenBy(i => i.BranchName)
+                        .ToList();
+                }
+                else
+                {
+                    selectedProductInventory = response.Data.OrderBy(i => i.BranchName).ToList();
+                }
             }
         }
         catch(Exception ex)

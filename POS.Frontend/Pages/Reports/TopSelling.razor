@@ -164,7 +164,7 @@
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
                                         <div class="w-10 h-10 rounded-xl bg-gray-50 dark:bg-border/20 border border-border/40 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                                            @GetProductIcon(p.CategoryName)
+                                            @POS.Frontend.Shared.CategoryIconHelper.GetIcon(p.CategoryName)
                                         </div>
                                         <div>
                                             <p class="text-sm font-bold text-gray-900 dark:text-white">@p.Name</p>
@@ -450,22 +450,5 @@
 
     private void GoBack() => Navigation.NavigateTo("/");
 
-    private string GetProductIcon(string category)
-    {
-        return category.ToLower() switch
-        {
-            "laptop" => "💻",
-            "smartphone" or "mobile" => "📱",
-            "monitor" => "🖥️",
-            "storage" => "💾",
-            "keyboard" => "⌨️",
-            "mouse" => "🖱️",
-            "headphone" or "audio" => "🎧",
-            "gaming" => "🎮",
-            "router" or "networking" => "🌐",
-            "battery" or "charger" => "🔋",
-            "speaker" => "🔊",
-            _ => "📦"
-        };
-    }
+
 }

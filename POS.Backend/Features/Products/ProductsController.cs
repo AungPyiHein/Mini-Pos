@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using POS.Backend.Features.Products;
 using POS.Backend.Common;
+using POS.Shared.Models;
 
 namespace POS.Backend.Features.Products
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ProductsController : ControllerBase
@@ -23,14 +23,14 @@ namespace POS.Backend.Features.Products
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Products retrieved successfully", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPost]
-        [Authorize(Policy = "Management")]
+        [RequireRole(UserRole.Admin, UserRole.MerchantAdmin)]
         public async Task<IActionResult> CreateProducts(CreateProductRequest request)
         {
             var result = await _productsServices.CreateProductAsync(request);
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Product Created", Data = result.Value }) : BadRequest(new { IsSuccess = false, Message = result.Error });
         }
         [HttpPut("{id}")]
-        [Authorize(Policy = "Management")]
+        [RequireRole(UserRole.Admin, UserRole.MerchantAdmin)]
         public async Task<IActionResult> UpdateProducts(Guid id, UpdateProductRequest request)
         {
             if (id != request.Id)
@@ -48,7 +48,7 @@ namespace POS.Backend.Features.Products
             return result.IsSuccess ? Ok(new { IsSuccess = true, Message = "Product retrieved successfully", Data = result.Value }) : NotFound(new { IsSuccess = false, Message = result.Error });
         }
         [HttpDelete("{id}")]
-        [Authorize(Policy = "Management")]
+        [RequireRole(UserRole.Admin, UserRole.MerchantAdmin)]
         public async Task<IActionResult> DeleteProduct(Guid id)
         {
             var result = await _productsServices.DeleteProductAsync(id);
